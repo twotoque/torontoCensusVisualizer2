@@ -1,0 +1,112 @@
+# api.py
+# Thin FastAPI wrapper around figures.py.
+# Internal (127.0.0.1:8000) -- go should only call it 
+#
+# Each endpoint does one thing:
+#   1. Load data (cached by data_loader.py)
+#   2. Call the appropriate figures.py function
+#   3. Return the result
+
+import json
+import plotly.graph_objects as go
+import plotly.io as pio
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
+
+from census_registry import available_years, get_paths
+from data_loader import load_census, load_geo
+from figures import build_bar, build_map, build_stack, export_pdf, search_rows
+
+app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
+
+class StackRequest(BaseModel):
+    rows: list[int] 
+
+def _to_json(fig_dict: dict) -> Response:
+    """Plotly's serializer handles numpy/pandas types that json.dumps cannot."""
+    json_str = pio.to_json(go.Figure(fig_dict))
+    return Response(content=json_str, media_type="application/json")
+
+def _load(year: int):
+    """Load all data for a year. Everything is cached after the first call."""
+    try:
+        paths = get_paths(year)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    geo_gdf,   geo_dict = load_geo(paths["neighbourhoods"])
+    wards_gdf, _        = load_geo(paths["wards"])
+    census_df           = load_census(paths["census"])
+    return geo_gdf, geo_dict, wards_gdf, census_df
+
+
+def _row_index(row: int) -> int:
+    """Convert 1-based display row → 0-based DataFrame index."""
+    return row - 2
+
+@app.get("/years")
+def get_years():
+    return JSONResponse(content={"years": available_years()})
+
+
+@app.get("/census/{year}/search")
+def search(year: int, q: str):
+    _, _, _, census_df = _load(year)
+    return JSONResponse(content={"results": search_rows(census_df, q)})
+
+
+@app.get("/census/{year}/row/{row}/map")
+def get_map(year: int, row: int):
+    geo_gdf, geo_dict, wards_gdf, census_df = _load(year)
+    return _to_json(build_map(geo_gdf, geo_dict, wards_gdf, census_df, _row_index(row)))
+
+
+@app.get("/census/{year}/row/{row}/bar")
+def get_bar(year: int, row: int):
+    _, _, _, census_df = _load(year)
+    return _to_json(build_bar(census_df, _row_index(row)))
+
+@app.post("/census/{year}/stack")
+def get_stack(year: int, body: StackRequest):
+    _, _, _, census_df = _load(year)
+    indices = [_row_index(r) for r in body.rows]
+    return _to_json(build_stack(census_df, indices))
+
+
+@app.get("/census/{year}/row/{row}/export/{kind}")
+def get_export(year: int, row: int, kind: str):
+    """
+    Returns raw PDF bytes.
+    Go streams this directly to React as application/pdf.
+    kind: "map" | "bar"
+    """
+    if kind not in ("map", "bar"):
+        raise HTTPException(status_code=400, detail="kind must be 'map' or 'bar'")
+
+    geo_gdf, geo_dict, wards_gdf, census_df = _load(year)
+
+    if kind == "map":
+        fig_dict = build_map(geo_gdf, geo_dict, wards_gdf, census_df, _row_index(row))
+    else:
+        fig_dict = build_bar(census_df, _row_index(row))
+
+    pdf_bytes = export_pdf(fig_dict, kind)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{kind}_{year}_{row}.pdf"'},
+    )
+
+@app.post("/census/{year}/export/stack")
+def export_stack(year: int, body: StackRequest):
+    _, _, _, census_df = _load(year)
+    indices  = [_row_index(r) for r in body.rows]
+    fig_dict = build_stack(census_df, indices)
+    pdf_bytes = export_pdf(fig_dict, "stack")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="stack_{year}.pdf"'},
+    )
