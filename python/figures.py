@@ -15,7 +15,8 @@ def build_map(
     geo_dict: dict,
     wards_gdf: gpd.GeoDataFrame,
     census_df: pd.DataFrame,
-    row_index: int,         
+    row_index: int,
+    label_col: str = "Neighbourhood Name",
 ) -> dict:
     """
     Map for a single census row across all Toronto neighbourhoods.
@@ -26,7 +27,7 @@ def build_map(
     React renders it with Plotly.js
     """
     columns_set = set(census_df.columns)
-    graph_title = census_df.iloc[row_index]["Neighbourhood Name"]
+    graph_title = str(census_df.iloc[row_index][label_col])
 
     z_values: list = []
     for _, geo_row in geo_gdf.drop(columns="geometry").iterrows():
@@ -102,7 +103,8 @@ def build_map(
 
 def build_bar(
     census_df: pd.DataFrame,
-    row_index: int,         
+    row_index: int,
+    label_col: str = "Neighbourhood Name",
 ) -> dict:
     """
     Bar chart for a single census row across all neighbourhoods, with a city-wide median line.
@@ -110,10 +112,11 @@ def build_bar(
 
     Returns a Plotly figure as a JSON parsasable dict.
     """
-    row         = census_df.iloc[row_index].to_list()
-    graph_title = row[0]
-    raw_values  = row[1:]
-    x_values    = census_df.columns.to_list()[1:]
+    col_start   = census_df.columns.get_loc(label_col)
+    row         = census_df.iloc[row_index]
+    graph_title = str(row[label_col])
+    raw_values  = row.iloc[col_start + 1:].to_list()
+    x_values    = census_df.columns.to_list()[col_start + 1:]
 
     try:
         y_values = list(map(float, raw_values))
@@ -172,6 +175,7 @@ def build_bar(
 def build_stack(
     census_df: pd.DataFrame,
     row_indices: list[int],  # 0-based DataFrame indices
+    label_col: str = "Neighbourhood Name",
 ) -> dict:
     """
     Stacked bar chart combining multiple census rows.
@@ -179,13 +183,14 @@ def build_stack(
 
     Returns a Plotly figure as a JSON parsable dict.
     """
-    x_values = census_df.columns.to_list()[1:]
-    fig      = go.Figure()
+    col_start = census_df.columns.get_loc(label_col)
+    x_values  = census_df.columns.to_list()[col_start + 1:]
+    fig       = go.Figure()
 
     for idx in row_indices:
         row   = census_df.iloc[idx]
-        title = row["Neighbourhood Name"]
-        y     = list(map(float, row.iloc[1:].values))
+        title = str(row[label_col])
+        y     = list(map(float, row.iloc[col_start + 1:].values))
 
         fig.add_trace(go.Bar(
             x=x_values,
@@ -217,24 +222,25 @@ def search_rows(
     census_df: pd.DataFrame,
     query: str,
     limit: int = 5,
+    label_col: str = "Neighbourhood Name",
 ) -> list[dict]:
     """
-    Substring search across Neighbourhood Name column.
+    Substring search across label column.
     Equivalent to the original suggestion logic in update_output / update_array.
 
     Returns list of {row, label}, row == 1-based display row number
     Go expects (matching the original row numbering convention).
     """
     matched = census_df[
-        census_df["Neighbourhood Name"].str.contains(
+        census_df[label_col].str.contains(
             query, case=False, regex=False, na=False
         )
     ].head(limit)
 
     return [
         {
-            "row":   int(idx) + 2,       
-            "label": str(row["Neighbourhood Name"]),
+            "row":   int(idx) + 2,
+            "label": str(row[label_col]),
         }
         for idx, row in matched.iterrows()
     ]
