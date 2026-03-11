@@ -8,14 +8,15 @@ export default function App() {
   const [years, setYears]     = useState([2021]);
   const [row, setRow]         = useState(37);
   const [input, setInput]     = useState("37");
-  const [suggestions, setSuggestions] = useState([]);
-  const [mapFig, setMapFig]   = useState(null);
-  const [barFig, setBarFig]   = useState(null);
-  const [stackFig, setStackFig] = useState(null);
-  const [stackRows, setStackRows] = useState([]);
+const [suggestions, setSuggestions] = useState<{row: number, label: string}[]>([]);
+const [stackSuggestions, setStackSuggestions] = useState<{row: number, label: string}[]>([]);
+  const [mapFig, setMapFig] = useState<any>(null);
+  const [barFig, setBarFig] = useState<any>(null);
+  const [stackFig, setStackFig] = useState<any>(null);
+const [stackRows, setStackRows] = useState<number[]>([]);
   const [stackInput, setStackInput] = useState("");
-  const [stackSuggestions, setStackSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  
 
   // Load available years on mount
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function App() {
   }, [year, row]);
 
   // Search suggestions for single var
-  async function handleSearch(q) {
+  async function handleSearch(q: any) {
     setInput(q);
     if (!q || !isNaN(q)) { setSuggestions([]); return; }
     const d = await fetch(`${API}/census/${year}/search?q=${encodeURIComponent(q)}`).then(r => r.json());
@@ -50,7 +51,7 @@ export default function App() {
   }
 
   // Stack chart
-  async function addStackRow(r) {
+  async function addStackRow(r: number) {
     const next = [...stackRows, r];
     setStackRows(next);
     setStackInput("");
@@ -63,7 +64,7 @@ export default function App() {
     setStackFig(fig);
   }
 
-  async function removeStackRow(i) {
+  async function removeStackRow(i: number) {
     const next = stackRows.filter((_, idx) => idx !== i);
     setStackRows(next);
     if (next.length === 0) { setStackFig(null); return; }
@@ -75,7 +76,7 @@ export default function App() {
     setStackFig(fig);
   }
 
-  async function handleStackSearch(q) {
+  async function handleStackSearch(q : any) {
     setStackInput(q);
     if (!q || !isNaN(q)) { setStackSuggestions([]); return; }
     const d = await fetch(`${API}/census/${year}/search?q=${encodeURIComponent(q)}`).then(r => r.json());
@@ -163,10 +164,10 @@ export default function App() {
         <input
           value={stackInput}
           onChange={e => handleStackSearch(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !isNaN(stackInput) && stackInput) addStackRow(parseInt(stackInput)); }}
+          onKeyDown={e => { if (e.key === "Enter" && !isNaN(Number(stackInput)) && stackInput) addStackRow(parseInt(stackInput)); }}
           placeholder="Row number or name..."
         />
-        <button onClick={() => { if (!isNaN(stackInput) && stackInput) addStackRow(parseInt(stackInput)); }}>
+        <button onClick={() => { if (!isNaN(Number(stackInput)) && stackInput) addStackRow(parseInt(stackInput)); }}>
           Add
         </button>
 
