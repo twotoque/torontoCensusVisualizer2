@@ -18,8 +18,7 @@ func main() {
 	origin     := env("ALLOWED_ORIGIN", "http://localhost:3000")
 	cacheTTL   := 10 * time.Minute
 
-
-	c       =:= cache.New(cacheTTL)
+	c       := cache.New(cacheTTL)
 	ro      := router.New(pythonURL, c)
 	handler := ro.Build([]string{origin})
 

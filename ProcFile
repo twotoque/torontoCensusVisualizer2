@@ -1,0 +1,10 @@
+api:      cd python && python3 -m uvicorn api:app --host 127.0.0.1 --port 8000
+go:       cd go && go run .
+frontend: npm run dev --prefix torontoCensusVisualizer
+
+```
+pip install honcho
+lsof -ti :8080 | xargs kill -9
+lsof -ti :8000 | xargs kill -9
+python3 -m honcho start
+```
