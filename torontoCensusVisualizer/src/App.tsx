@@ -135,15 +135,18 @@ const [stackRows, setStackRows] = useState<number[]>([]);
 
       <br />
 
+
       {/* Map */}
       {loading && <p>Loading...</p>}
       {mapFig && (
+        <div className="w-screen" >
         <Plot
           data={mapFig.data}
           layout={{ ...mapFig.layout, autosize: true }}
           style={{ width: "100%", height: 600 }}
           useResizeHandler
         />
+        </div>
       )}
 
       {/* Bar */}
