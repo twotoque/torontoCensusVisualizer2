@@ -3,6 +3,9 @@ shp_to_geojson.py
 Converts a shapefile to a GeoJSON file compatible with torontoCensusVisualizer
 Helper file; does not run as part of the app. 
 
+While this app only calls for a .shp file as its params, you'll require all of the
+WGS84 shapefile components (.shp, .shx, .dbf, .prj) in the same directory for it to work.
+
 Usage:
     python3 shp_to_geojson.py <input.shp> <output.geojson>
 
@@ -49,7 +52,7 @@ def convert(shp_path: str, out_path: str) -> None:
 
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"💾  Writing {out} ...")
+    print(f"Writing {out} ...")
     gdf.to_file(out, driver="GeoJSON")
 
     with open(out) as f:

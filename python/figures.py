@@ -9,14 +9,9 @@ import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
 
-
 def build_map(
-    geo_gdf: gpd.GeoDataFrame,
-    geo_dict: dict,
-    wards_gdf: gpd.GeoDataFrame,
-    census_df: pd.DataFrame,
-    row_index: int,
-    label_col: str = "Neighbourhood Name",
+    geo_gdf, geo_dict, wards_gdf, census_df,
+    row_index, label_col="Neighbourhood Name", wards_name_col="AREA_NAME"
 ) -> dict:
     """
     Map for a single census row across all Toronto neighbourhoods.
@@ -56,7 +51,7 @@ def build_map(
 
     wards_dict = json.loads(wards_gdf.to_json())
     for feature in wards_dict["features"]:
-        ward_name = feature["properties"]["AREA_NAME"]
+        ward_name = feature["properties"][wards_name_col] 
         for polygon in feature["geometry"]["coordinates"]:
             for ring in polygon:
                 fig.add_trace(go.Scattermapbox(
