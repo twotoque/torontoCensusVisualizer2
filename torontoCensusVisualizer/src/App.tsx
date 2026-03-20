@@ -38,13 +38,14 @@ const [stackRows, setStackRows] = useState<number[]>([]);
   }, [year, row]);
 
   // Search suggestions for single var
-  async function handleSearch(q: any) {
-    setInput(q);
-    if (!q) { setSuggestions([]); return; }
-    const d = await fetch(`${API}/census/${year}/search?q=${encodeURIComponent(q)}`).then(r => r.json());
-    setSuggestions(d.results || []);
+  async function handleSearch(q: string) {
+      setInput(q);
+      if (!q) { setSuggestions([]); return; }
+      const d = await fetch(
+          `${API}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`
+      ).then(r => r.json());
+      setSuggestions(d.results || []);
   }
-
   function submitRow() {
     const n = parseInt(input);
     if (!isNaN(n)) { setRow(n); setSuggestions([]); }

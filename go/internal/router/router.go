@@ -5,13 +5,6 @@
 //   2. Build cache key
 //   3. Call proxy.Get / proxy.Post / proxy.Stream
 //
-// Go never inspects the JSON body — it just moves bytes.
-// Python decides what the response contains.
-//
-// To add LLM or ML routes:
-//   1. Add a new Proxy field (e.g. mlProxy)
-//   2. Add route(s) in Build()
-//   3. Add handler(s) below — same 3-line pattern
 
 package router
 
@@ -64,6 +57,10 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	r.Post("/api/census/{year}/stack",                   ro.getStack)
 	r.Get("/api/census/{year}/row/{row}/export/{kind}",  ro.exportFigure)
 	r.Post("/api/census/{year}/export/stack",            ro.exportStack)
+
+	//rag fns 
+	r.Get("/api/census/{year}/semantic-search", ro.semanticSearch)
+	r.Get("/api/census/search/semantic",        ro.semanticSearchGlobal)
 
 	// future ml route?: 
 	// r.Get("/api/ml/census/{year}/row/{row}/predict",  ro.mlPredict)
@@ -157,4 +154,23 @@ func paramYear(r *http.Request) int {
 func paramRow(r *http.Request) int {
 	v, _ := strconv.Atoi(chi.URLParam(r, "row"))
 	return v
+}
+
+func (ro *Router) semanticSearch(w http.ResponseWriter, r *http.Request) {
+    year := paramYear(r)
+    q    := r.URL.Query().Get("q")
+    ro.figures.Get(w,
+        fmt.Sprintf("/census/%d/semantic-search?q=%s", year, q),
+        "",
+        "application/json",
+    )
+}
+
+func (ro *Router) semanticSearchGlobal(w http.ResponseWriter, r *http.Request) {
+    q := r.URL.Query().Get("q")
+    ro.figures.Get(w,
+        fmt.Sprintf("/census/search/semantic?q=%s", q),
+        "",
+        "application/json",
+    )
 }

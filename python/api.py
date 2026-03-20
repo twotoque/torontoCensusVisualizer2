@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from census_registry import available_years, get_paths
 from data_loader import load_census, load_geo
 from figures import build_bar, build_map, build_stack, export_pdf, search_rows
+from rag import semantic_search
 
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
 
@@ -110,3 +111,15 @@ def export_stack(year: int, body: StackRequest):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="stack_{year}.pdf"'}
     )
+
+
+@app.get("/census/{year}/semantic-search")
+def semantic(year: int, q: str):
+    results = semantic_search(q,     year=year)
+    return JSONResponse(content={"results": results})
+
+# crossyear 
+@app.get("/census/search/semantic")
+def semantic_global(q: str):
+    results = semantic_search(q)
+    return JSONResponse(content={"results": results})
