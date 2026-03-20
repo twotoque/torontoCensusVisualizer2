@@ -1,6 +1,5 @@
 # census_registry.py
 # The only file that knows which census years exist and where their data lives.
-# Adding a new year = one dict entry. Nothing else changes.
 
 CENSUS_YEARS: dict[int, dict[str, str]] = {
     2021: {
