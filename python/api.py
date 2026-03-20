@@ -33,7 +33,10 @@ def _load(year: int):
 
     geo_gdf,   geo_dict = load_geo(paths["neighbourhoods"])
     wards_gdf, _        = load_geo(paths["wards"])
-    census_df           = load_census(paths["census"])
+    census_df           = load_census(
+        paths["census"],
+        drop_cols=tuple(paths.get("drop_cols", ())),
+    )
 
     return geo_gdf, geo_dict, wards_gdf, census_df, paths["label_col"], paths["wards_name_col"], paths.get("id_col")
 
@@ -57,12 +60,12 @@ def get_years():
 
 @app.get("/census/{year}/search")
 def search(year: int, q: str):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col, _= _load(year)
     return JSONResponse(content={"results": search_rows(census_df, q, label_col=label_col, id_col=id_col)})
 
 @app.get("/census/{year}/row/{row}/map")
 def get_map(year: int, row: int):
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col= _load(year)
     return _to_json(build_map(geo_gdf, geo_dict, wards_gdf, census_df, resolve_row(census_df, row, id_col), label_col, wards_name_col))
 
 @app.get("/census/{year}/row/{row}/bar")
@@ -72,7 +75,7 @@ def get_bar(year: int, row: int):
 
 @app.post("/census/{year}/stack")
 def get_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col, _ = _load(year)
     indices = [resolve_row(census_df, r, id_col) for r in body.rows]
     return _to_json(build_stack(census_df, indices, label_col))
 
@@ -81,7 +84,7 @@ def get_export(year: int, row: int, kind: str):
     if kind not in ("map", "bar"):
         raise HTTPException(status_code=400, detail="kind must be 'map' or 'bar'")
     
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col, _ = _load(year)
     idx = resolve_row(census_df, row, id_col)
     
     if kind == "map":
@@ -98,7 +101,7 @@ def get_export(year: int, row: int, kind: str):
 
 @app.post("/census/{year}/export/stack")
 def export_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col, _ = _load(year)
     indices = [resolve_row(census_df, r, id_col) for r in body.rows]
     fig_dict = build_stack(census_df, indices, label_col)
     pdf_bytes = export_pdf(fig_dict, "stack")

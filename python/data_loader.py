@@ -9,11 +9,15 @@ import pandas as pd
 
 
 @lru_cache(maxsize=16)
-def load_census(path: str) -> pd.DataFrame:
+def load_census(path: str, drop_cols: tuple[str, ...] = ()) -> pd.DataFrame:
     """Load and cache a census CSV; calls thereafter return from the local data structure."""
-
-
-    return pd.read_csv(path)
+    df = pd.read_csv(path)
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+    neighbourhood_cols = df.columns[5:]
+    df[neighbourhood_cols] = df[neighbourhood_cols].replace(
+        {r',': '', r'%': ''}, regex=True
+    )
+    return df
 
 
 @lru_cache(maxsize=16)
@@ -26,14 +30,13 @@ def load_geo(path: str) -> tuple[gpd.GeoDataFrame, dict]:
     # normalize neighbourhood names by stripping trailing " (number)" suffix (for 2016 and earlier only)
     if "AREA_NAME" in gdf.columns:
        gdf["AREA_NAME"] = (
-        gdf["AREA_NAME"]
-        .str.replace(r'\s*\(\d+\)$', '', regex=True)
-        .str.replace(r'St\.James', 'St. James', regex=False)
-        .str.strip()
-    )
+            gdf["AREA_NAME"]
+            .str.replace(r'\s*\(\d+\)$', '', regex=True)
+            .str.replace(r'St\.James', 'St. James', regex=False)
+            .str.strip()
+        )
     geo_dict = json.loads(gdf.to_json())
     return gdf, {
         "type": "FeatureCollection",
         "features": geo_dict["features"],
     }
-

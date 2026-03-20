@@ -21,6 +21,7 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "wards_name_col": "AREA_NAME",
         "id_col": "_id",
         "row_offset": 1,
+        "drop_cols": ("City of Toronto",),
     },
 
     2011: {
@@ -30,6 +31,7 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "label_col":      "Attribute",
         "wards_name_col": "AREA_NAME",
         "id_col":         "_id",
+        "drop_cols": ("City of Toronto",),
     },
 
     2006: {
@@ -39,8 +41,9 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "label_col":      "Attribute",
         "wards_name_col": "AREA_NAME",
         "id_col":         "_id",
+        "drop_cols": ("City of Toronto",),
     },
-    
+
     2001: {
         "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2001/CityCensusData.csv",
         "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-140/Neighbourhoods.geojson",
@@ -48,6 +51,7 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "label_col":      "Attribute",
         "wards_name_col": "AREA_NAME",
         "id_col":         "_id",
+        "drop_cols": ("City of Toronto",),
     },
 
 }
