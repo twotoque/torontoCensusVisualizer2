@@ -5,8 +5,8 @@
 CENSUS_YEARS: dict[int, dict[str, str]] = {
     2021: {
         "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/CityCensusData.csv",
-        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/Neighbourhoods.geojson",
-        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/CityWards.geojson",
+        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-158/Neighbourhoods.geojson",
+        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/wards-44/CityWards.geojson",
         "label_col":      "Neighbourhood Name",
         "wards_name_col": "AREA_NAME",
         "id_col": None,
@@ -15,13 +15,41 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
 
     2016: {
         "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2016/CityCensusData.csv",
-        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2016/Neighbourhoods.geojson",
-        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/CityWards.geojson",
+        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-140/Neighbourhoods.geojson",
+        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/wards-44/CityWards.geojson",
         "label_col":      "Characteristic",
         "wards_name_col": "AREA_NAME",
         "id_col": "_id",
         "row_offset": 1,
     },
+
+    2011: {
+        "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2011/CityCensusData.csv",
+        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-140/Neighbourhoods.geojson",
+        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/wards-44/CityWards.geojson",
+        "label_col":      "Attribute",
+        "wards_name_col": "AREA_NAME",
+        "id_col":         "_id",
+    },
+
+    2006: {
+        "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2006/CityCensusData.csv",
+        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-140/Neighbourhoods.geojson",
+        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/wards-44/CityWards.geojson",
+        "label_col":      "Attribute",
+        "wards_name_col": "AREA_NAME",
+        "id_col":         "_id",
+    },
+    
+    2001: {
+        "census":         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2001/CityCensusData.csv",
+        "neighbourhoods": "/Users/dereksong/Documents/torontoCensusVisualizer2/data/neighbourhood-140/Neighbourhoods.geojson",
+        "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/wards-44/CityWards.geojson",
+        "label_col":      "Attribute",
+        "wards_name_col": "AREA_NAME",
+        "id_col":         "_id",
+    },
+
 }
 
 DEFAULT_YEAR = 2021

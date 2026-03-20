@@ -56,7 +56,10 @@ def build_map(
     wards_dict = json.loads(wards_gdf.to_json())
     lons, lats = [], []
     for feature in wards_dict["features"]:
-        for polygon in feature["geometry"]["coordinates"]:
+        geom = feature["geometry"]
+        coords = geom["coordinates"]
+        polygons = coords if geom["type"] == "MultiPolygon" else [coords]
+        for polygon in polygons:
             for ring in polygon:
                 lons.extend([c[0] for c in ring] + [None])
                 lats.extend([c[1] for c in ring] + [None])
