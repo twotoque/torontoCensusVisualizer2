@@ -28,7 +28,11 @@ def build_map(
     for _, geo_row in geo_gdf.drop(columns="geometry").iterrows():
         name = geo_row["AREA_NAME"]
         if name in columns_set:
-            z_values.append(census_df[name].iloc[row_index])
+            val = census_df[name].iloc[row_index]
+            try:
+                z_values.append(float(str(val).replace(",", "").replace("%", "")))
+            except (ValueError, TypeError):
+                z_values.append(None)
         else:
             z_values.append(None)
 
@@ -50,20 +54,22 @@ def build_map(
     ))
 
     wards_dict = json.loads(wards_gdf.to_json())
+    lons, lats = [], []
     for feature in wards_dict["features"]:
-        ward_name = feature["properties"][wards_name_col] 
         for polygon in feature["geometry"]["coordinates"]:
             for ring in polygon:
-                fig.add_trace(go.Scattermapbox(
-                    mode="lines",
-                    showlegend=True,
-                    lon=[c[0] for c in ring],
-                    lat=[c[1] for c in ring],
-                    line=dict(width=2, color="red"),
-                    name=ward_name,
-                    text=ward_name,
-                    hoverlabel=dict(font=dict(family="proxima-nova, sans-serif")),
-                ))
+                lons.extend([c[0] for c in ring] + [None])
+                lats.extend([c[1] for c in ring] + [None])
+
+    fig.add_trace(go.Scattermapbox(
+        mode="lines",
+        lon=lons,
+        lat=lats,
+        line=dict(width=2, color="red"),
+        name="City Wards",
+        showlegend=True,
+        hoverlabel=dict(font=dict(family="proxima-nova, sans-serif")),
+    ))
 
     fig.update_layout(
         mapbox_style="carto-positron",
@@ -93,7 +99,6 @@ def build_map(
     )
 
     return fig.to_dict()
-
 
 
 def build_bar(
