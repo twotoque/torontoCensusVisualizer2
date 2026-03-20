@@ -8,7 +8,7 @@
 # Everything is localish 
 
 from query_parser import parse
-from rag import semantic_search
+from rag import semantic_search, semantic_search_with_disambiguation
 from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
 import pandas as pd
@@ -259,63 +259,77 @@ def _fetch_all_neighbourhoods_for_year(row_id: int, year: int) -> dict:
 
 # api
 
-def answer(query: str) -> dict:
+def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int | None = None) -> dict:
     """
     Answer a natural language Toronto census question.
 
     Returns:
     {
-        "answer":  str,   # human-readable answer
-        "intent":  str,   # detected intent
-        "metric":  str,   # matched census metric label
-        "context": dict,  # raw values used to generate the answer
+        "answer":        str | None,  # human-readable answer, None if disambiguation needed
+        "intent":        str,
+        "metric":        str | None,
+        "context":       dict,
+        "disambiguation": list | None  # options to pick from if ambiguous
     }
     """
     # 1. parse query with PyTorch model
-    parsed = parse(query)
+    parsed        = parse(query)
     intent        = parsed["intent"]
-    metric_query  = parsed["metric"] or query  # fallback to full query if NER missed
     neighbourhoods = parsed["neighbourhoods"]
     years         = parsed["years"]
 
-    # 2. RAG:find matching row per year
-    row_ids = _get_row_ids(query, neighbourhoods, years)
-    if not row_ids:
-        return {
-            "answer":  "Could not find a matching census metric for your query.",
-            "intent":  intent,
-            "metric":  metric_query,
-            "context": {},
-        }
+    # 2. RAG — skip if user already confirmed a row
+    if confirmed_row_id is not None and confirmed_year is not None:
+        row_ids = {confirmed_year: confirmed_row_id}
+        display_metric = query
+    else:
+        search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
+        results, needs_disambiguation = semantic_search_with_disambiguation(
+            search_query, year=None, limit=5
+        )
 
-    rag_results = semantic_search(
-        _clean_query_for_rag(query, neighbourhoods, years) or query,
-        year=None, limit=1
-    )
-    display_metric = rag_results[0]["label"] if rag_results else query
+        if not results:
+            return {
+                "answer": "Could not find a matching census metric for your query.",
+                "intent": intent, "metric": None, "context": {}, "disambiguation": None,
+            }
 
-    # 3. Fetch values 
+        # return disambiguation options if ambiguous
+        if needs_disambiguation:
+            return {
+                "answer": None, "intent": intent, "metric": None, "context": {},
+                "disambiguation": [
+                    {"row_id": r["row_id"], "year": r["year"], "label": r["label"], "score": r["score"]}
+                    for r in results
+                ],
+            }
+
+        # single clear match — build row_ids per year from it
+        display_metric = results[0]["label"]
+        row_ids = _get_row_ids(query, neighbourhoods, years)
+        if not row_ids:
+            return {
+                "answer": "Could not find a matching census metric for your query.",
+                "intent": intent, "metric": display_metric, "context": {}, "disambiguation": None,
+            }
+
+    # 3. Fetch values
     if intent == "ranking":
-        # Need all neighbourhoods for ranking
-        year  = years[0]
-        rid   = row_ids.get(year)
+        year = years[0]
+        rid  = row_ids.get(year)
         if rid is None:
             return {"answer": f"No data for {year}.", "intent": intent,
-                    "metric": display_metric, "context": {}}
-        all_vals = _fetch_all_neighbourhoods_for_year(rid, year)
-        values   = {year: all_vals}
-        neighbourhoods = list(all_vals.keys())  
-
+                    "metric": display_metric, "context": {}, "disambiguation": None}
+        all_vals       = _fetch_all_neighbourhoods_for_year(rid, year)
+        values         = {year: all_vals}
+        neighbourhoods = list(all_vals.keys())
     else:
-        # Need specific neighbourhoods (a specific request)
         if not neighbourhoods:
             return {
-                "answer":  "Could not identify a neighbourhood in your query. "
-                           "Try including a Toronto neighbourhood name such as "
-                           "'Malvern', 'Annex', or 'Scarborough Village'.",
-                "intent":  intent,
-                "metric":  display_metric,
-                "context": {},
+                "answer": "Could not identify a neighbourhood in your query. "
+                          "Try including a Toronto neighbourhood name such as "
+                          "'Malvern', 'Annex', or 'Scarborough Village'.",
+                "intent": intent, "metric": display_metric, "context": {}, "disambiguation": None,
             }
         values = _fetch_values(row_ids, neighbourhoods)
 
@@ -324,9 +338,10 @@ def answer(query: str) -> dict:
     answer_text = template_fn(values, neighbourhoods, years, display_metric)
 
     return {
-        "answer":  answer_text,
-        "intent":  intent,
-        "metric":  display_metric,
-        "context": {"years": years, "neighbourhoods": neighbourhoods, "values": values},
+        "answer":         answer_text,
+        "intent":         intent,
+        "metric":         display_metric,
+        "context":        {"years": years, "neighbourhoods": neighbourhoods, "values": values},
+        "disambiguation": None,
     }
 

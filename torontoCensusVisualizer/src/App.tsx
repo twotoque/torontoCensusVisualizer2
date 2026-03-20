@@ -20,18 +20,23 @@ const [stackRows, setStackRows] = useState<number[]>([]);
   const [question, setQuestion]   = useState("");
 const [qaAnswer, setQaAnswer]   = useState<string | null>(null);
 const [qaLoading, setQaLoading] = useState(false)
+const [qaDisambiguation, setQaDisambiguation] = useState<any[] | null>(null);
+
 
 async function handleAsk() {
   if (!question.trim()) return;
   setQaLoading(true);
   setQaAnswer(null);
+  setQaDisambiguation(null); 
   try {
     const d = await fetch(`${API}/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     }).then(r => r.json());
-    setQaAnswer(d.answer || "No answer returned.");
+    console.log(d);
+    setQaAnswer(d.answer || null);
+    setQaDisambiguation(d.disambiguation || null);
   } catch {
     setQaAnswer("Error contacting the server.");
   } finally {
@@ -72,6 +77,18 @@ async function handleAsk() {
     const n = parseInt(input);
     if (!isNaN(n)) { setRow(n); setSuggestions([]); }
   }
+
+  async function handleAskWithRowId(rowId: number, year: number) {
+  setQaLoading(true);
+  setQaDisambiguation(null);
+  const d = await fetch(`${API}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, confirmed_row_id: rowId, confirmed_year: year }),
+  }).then(r => r.json());
+  setQaAnswer(d.answer || "No answer returned.");
+  setQaLoading(false);
+}
 
   // Stack chart
   async function addStackRow(r: number) {
@@ -131,11 +148,28 @@ async function handleAsk() {
       {qaLoading ? "Thinking..." : "Ask"}
     </button>
   </div>
-  {qaAnswer && (
-    <pre style={{ marginTop: 8, whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>
+{qaAnswer && (
+  <div style={{ marginTop: 8 }}>
+    <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>
       {qaAnswer}
     </pre>
-  )}
+  </div>
+)}
+
+{qaDisambiguation && (
+  <div style={{ marginTop: 8, background: "#fff8e1", padding: 8, borderRadius: 4 }}>
+    <p><strong>Multiple matches found — which did you mean?</strong></p>
+    {qaDisambiguation.map((opt: any, i: number) => (
+      <button
+        key={i}
+        style={{ display: "block", margin: "4px 0", padding: "4px 8px", cursor: "pointer" }}
+        onClick={() => handleAskWithRowId(opt.row_id, opt.year)}
+      >
+        {opt.document || opt.label} ({opt.year})
+      </button>
+    ))}
+  </div>
+)}
 </div>
 
       <br />

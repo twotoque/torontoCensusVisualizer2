@@ -6,6 +6,26 @@ _model  = SentenceTransformer('all-MiniLM-L6-v2')
 _client = chromadb.PersistentClient(path="/Users/dereksong/Documents/torontoCensusVisualizer2/data/chroma")
 _col    = _client.get_collection("census_rows")
 
+def semantic_search_with_disambiguation(
+    query: str,
+    year: int | None = None,
+    limit: int = 5,
+    similarity_threshold: float = 0.05,  # scores within this range are "similar"
+) -> tuple[list[dict], bool]:
+    """
+    Returns (results, needs_disambiguation).
+    needs_disambiguation is True if top results are too close to call.
+    """
+    results = semantic_search(query, year=year, limit=limit)
+    if not results:
+        return [], False
+    
+    top_score = results[0]["score"]
+    similar = [r for r in results if top_score - r["score"] <= similarity_threshold]
+    
+    needs_disambiguation = len(similar) > 1
+    return similar if needs_disambiguation else results[:1], needs_disambiguation
+
 def semantic_search(
     query: str,
     year: int | None = None,
@@ -23,17 +43,20 @@ def semantic_search(
         query_embeddings=[embedding],
         n_results=limit,
         where=where,
+        include=["metadatas", "distances", "documents"],  # add documents
     )
     
     return [
-        {
-            "year":   m["year"],
-            "row_id": m["row_id"],
-            "label":  m["label"],
-            "score":  1 - d,  # chromadb returns distance, convert to similarity
-        }
-        for m, d in zip(
-            results["metadatas"][0],
-            results["distances"][0],
-        )
-    ]
+    {
+        "year":     m["year"],
+        "row_id":   m["row_id"],
+        "label":    m["label"].strip(),
+        "document": d,
+        "score":    1 - dist, # chromadb returns distance, convert to similarity
+    }
+    for m, d, dist in zip(
+        results["metadatas"][0],
+        results["documents"][0],
+        results["distances"][0],
+    )
+]
