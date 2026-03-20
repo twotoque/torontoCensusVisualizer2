@@ -61,6 +61,7 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	//rag fns 
 	r.Get("/api/census/{year}/semantic-search", ro.semanticSearch)
 	r.Get("/api/census/search/semantic",        ro.semanticSearchGlobal)
+	r.Post("/api/ask", ro.ask)
 
 	// future ml route?: 
 	// r.Get("/api/ml/census/{year}/row/{row}/predict",  ro.mlPredict)
@@ -173,4 +174,7 @@ func (ro *Router) semanticSearchGlobal(w http.ResponseWriter, r *http.Request) {
         "",
         "application/json",
     )
+}
+func (ro *Router) ask(w http.ResponseWriter, r *http.Request) {
+    ro.figures.Post(w, r, "/ask", "", "application/json")
 }

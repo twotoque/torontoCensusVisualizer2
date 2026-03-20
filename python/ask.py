@@ -11,6 +11,23 @@ from query_parser import parse
 from rag import semantic_search
 from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
+import pandas as pd
+
+# import the weight "Translator" fn 
+weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
+
+# training wheels for the RAG
+ENRICHMENTS = {
+    "population": "total population count",
+    "income":     "average household total income",
+    "housing":    "dwelling units",
+    "neighbourhood number": "Neighbourhood Number",
+}
+BLOCKED_LABELS = {
+    "Neighbourhood Number",
+    "TSNS2020 Designation", 
+    "Neighbourhood Name",
+}
 
 
 def _fetch_values(
@@ -24,44 +41,82 @@ def _fetch_values(
     result = {}
     for year, row_id in row_ids.items():
         paths = get_paths(year)
-        df    = load_census(
-            paths["census"],
-            drop_cols=tuple(paths.get("drop_cols", ())),
-        )
+        df    = load_census(paths["census"], drop_cols=tuple(paths.get("drop_cols", ())))
         id_col = paths.get("id_col")
 
-        # find row
         if id_col and id_col in df.columns:
             matches = df[df[id_col] == row_id]
             if matches.empty:
                 continue
             row = matches.iloc[0]
         else:
-            if row_id >= len(df):
-                continue
             row = df.iloc[row_id]
 
         result[year] = {}
         for n in neighbourhoods:
-            if n in df.columns:
-                raw = row[n]
-                try:
-                    result[year][n] = float(str(raw).replace(",", "").replace("%", ""))
-                except (ValueError, TypeError):
-                    result[year][n] = str(raw)
+            resolved = _resolve_neighbourhood(n, weights_df, year)
+            total = 0.0
+            total_weight = 0.0
+            for new_name, weight in resolved.items():
+                if new_name in df.columns:
+                    raw = row[new_name]
+                    try:
+                        val = float(str(raw).replace(",", "").replace("%", ""))
+                        total += val * weight
+                        total_weight += weight
+                    except (ValueError, TypeError):
+                        pass
+            if total_weight > 0:
+                result[year][n] = total / total_weight
 
     return result
 
+def _resolve_neighbourhood(name: str, weights_df: pd.DataFrame, year: int) -> dict:
+    """
+    For years using 158-neighbourhood system (2021), map old names to new via weights.
+    Returns {new_name: weight} for neighbourhoods to fetch and combine.
+    """
+    NEW_SYSTEM_YEARS = [2021]
+    
+    if year not in NEW_SYSTEM_YEARS:
+        return {name: 1.0}  # 140 older name
+    
+    matches = weights_df[weights_df["AREA_NAME_1"] == name]
+    if matches.empty:
+        return {name: 1.0}  # 158 newer name
+    
+    return dict(zip(matches["AREA_NAME_2"], matches["weight"]))
 
-def _get_row_ids(metric_query: str, years: list[int]) -> dict:
-    """Uses RAG to find the best matching row_id per year for a metric query."""
+
+def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]) -> str:
+    """Remove neighbourhood names and years from query to get a cleaner metric search."""
+    cleaned = query.lower()
+    for n in neighbourhoods:
+        cleaned = cleaned.replace(n.lower(), "")
+    for y in years:
+        cleaned = cleaned.replace(str(y), "")
+    for word in ["what was", "what is", "show me", "how did", "compare",
+                 "which neighbourhood", "highest", "lowest", "over time",
+                 "changed", "difference", "between", "and", "in", "the",
+                 "from", "to", "how has", "historical", "trend", "terms of"]:
+        cleaned = cleaned.replace(word, " ")
+    cleaned = " ".join(cleaned.split()).strip()
+    return ENRICHMENTS.get(cleaned, cleaned)  
+
+
+def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dict:
+    search_query = _clean_query_for_rag(query, neighbourhoods, years)
+    if not search_query:
+        search_query = query
+
     row_ids = {}
     for year in years:
-        results = semantic_search(metric_query, year=year, limit=1)
-        if results:
-            row_ids[year] = results[0]["row_id"]
+        results = semantic_search(search_query, year=year, limit=5)  
+        for r in results:
+            if r["score"] > 0.05 and r["label"].strip() not in BLOCKED_LABELS:
+                row_ids[year] = r["row_id"]
+                break 
     return row_ids
-
 
 # answer tempaltes
 
@@ -216,7 +271,7 @@ def answer(query: str) -> dict:
     years         = parsed["years"]
 
     # 2. RAG:find matching row per year
-    row_ids = _get_row_ids(metric_query, years)
+    row_ids = _get_row_ids(query, neighbourhoods, years)
     if not row_ids:
         return {
             "answer":  "Could not find a matching census metric for your query.",
@@ -225,8 +280,11 @@ def answer(query: str) -> dict:
             "context": {},
         }
 
-    rag_results = semantic_search(metric_query, year=None, limit=1)
-    display_metric = rag_results[0]["label"] if rag_results else metric_query
+    rag_results = semantic_search(
+        _clean_query_for_rag(query, neighbourhoods, years) or query,
+        year=None, limit=1
+    )
+    display_metric = rag_results[0]["label"] if rag_results else query
 
     # 3. Fetch values 
     if intent == "ranking":
@@ -263,3 +321,4 @@ def answer(query: str) -> dict:
         "metric":  display_metric,
         "context": {"years": years, "neighbourhoods": neighbourhoods, "values": values},
     }
+
