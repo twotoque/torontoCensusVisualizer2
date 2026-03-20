@@ -1,4 +1,4 @@
-api:      cd python && python3 -m uvicorn api:app --host 127.0.0.1 --port 8000
+api:      /usr/local/bin/python3 -m uvicorn api:app --host 127.0.0.1 --port 8000 --reload --app-dir python
 go:       cd go && go run .
 frontend: npm run dev --prefix torontoCensusVisualizer
 

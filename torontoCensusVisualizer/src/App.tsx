@@ -17,6 +17,28 @@ const [stackRows, setStackRows] = useState<number[]>([]);
   const [stackInput, setStackInput] = useState("");
   const [loading, setLoading] = useState(false);
   
+  const [question, setQuestion]   = useState("");
+const [qaAnswer, setQaAnswer]   = useState<string | null>(null);
+const [qaLoading, setQaLoading] = useState(false)
+
+async function handleAsk() {
+  if (!question.trim()) return;
+  setQaLoading(true);
+  setQaAnswer(null);
+  try {
+    const d = await fetch(`${API}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    }).then(r => r.json());
+    setQaAnswer(d.answer || "No answer returned.");
+  } catch {
+    setQaAnswer("Error contacting the server.");
+  } finally {
+    setQaLoading(false);
+  }
+}
+
 
   // Load available years on mount
   useEffect(() => {
@@ -94,6 +116,27 @@ const [stackRows, setStackRows] = useState<number[]>([]);
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
+
+<div style={{ marginBottom: 16, padding: 12, border: "1px solid #ccc", borderRadius: 4 }}>
+  <label><strong>Ask a question:</strong></label>
+  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+    <input
+      style={{ flex: 1, padding: "6px 8px" }}
+      value={question}
+      onChange={e => setQuestion(e.target.value)}
+      onKeyDown={e => e.key === "Enter" && handleAsk()}
+      placeholder="e.g. What was the population of Annex in 2011?"
+    />
+    <button onClick={handleAsk} disabled={qaLoading}>
+      {qaLoading ? "Thinking..." : "Ask"}
+    </button>
+  </div>
+  {qaAnswer && (
+    <pre style={{ marginTop: 8, whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>
+      {qaAnswer}
+    </pre>
+  )}
+</div>
 
       <br />
 
