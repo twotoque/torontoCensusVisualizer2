@@ -111,11 +111,19 @@ def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dic
 
     row_ids = {}
     for year in years:
-        results = semantic_search(search_query, year=year, limit=5)  
-        for r in results:
-            if r["score"] > 0.05 and r["label"].strip() not in BLOCKED_LABELS:
-                row_ids[year] = r["row_id"]
-                break 
+        results = semantic_search(search_query, year=year, limit=5)
+        results = [r for r in results if r["label"].strip() not in BLOCKED_LABELS]
+        if not results:
+            continue
+
+        # prefer rows whose label mentions the target year (population in 2011 vs "Population, 2011" in the 2021 census)
+        year_str = str(year)
+        year_match = [r for r in results if year_str in r["label"]]
+        if year_match and year_match[0]["score"] > 0.05:
+            row_ids[year] = year_match[0]["row_id"]
+        elif results[0]["score"] > 0.05:
+            row_ids[year] = results[0]["row_id"]
+
     return row_ids
 
 # answer tempaltes
