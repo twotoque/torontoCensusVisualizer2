@@ -40,7 +40,7 @@ const [stackRows, setStackRows] = useState<number[]>([]);
   // Search suggestions for single var
   async function handleSearch(q: any) {
     setInput(q);
-    if (!q || !isNaN(q)) { setSuggestions([]); return; }
+    if (!q) { setSuggestions([]); return; }
     const d = await fetch(`${API}/census/${year}/search?q=${encodeURIComponent(q)}`).then(r => r.json());
     setSuggestions(d.results || []);
   }

@@ -23,8 +23,8 @@ def _to_json(fig_dict: dict) -> Response:
 
 def _load(year: int):
     """
-    Returns 6 values:
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col
+    Returns 7 values:
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col
     """
     try:
         paths = get_paths(year)
@@ -35,7 +35,7 @@ def _load(year: int):
     wards_gdf, _        = load_geo(paths["wards"])
     census_df           = load_census(paths["census"])
 
-    return geo_gdf, geo_dict, wards_gdf, census_df, paths["label_col"], paths["wards_name_col"]
+    return geo_gdf, geo_dict, wards_gdf, census_df, paths["label_col"], paths["wards_name_col"], paths.get("id_col")
 
 
 def _row_index(row: int) -> int:
@@ -48,12 +48,15 @@ def get_years():
 
 @app.get("/census/{year}/search")
 def search(year: int, q: str):
-    _, _, _, census_df, label_col, _ = _load(year)
-    return JSONResponse(content={"results": search_rows(census_df, q, label_col=label_col)})
+    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    print(f"search: year={year} q={q} label_col={label_col} id_col={id_col}")
+    results = search_rows(census_df, q, label_col=label_col, id_col=id_col)
+    print(f"results: {results}")
+    return JSONResponse(content={"results": results})
 
 @app.get("/census/{year}/row/{row}/map")
 def get_map(year: int, row: int):
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, _ = _load(year)
     return _to_json(build_map(geo_gdf, geo_dict, wards_gdf, census_df, _row_index(row), label_col, wards_name_col))
 
 @app.get("/census/{year}/row/{row}/bar")
@@ -63,7 +66,7 @@ def get_bar(year: int, row: int):
 
 @app.post("/census/{year}/stack")
 def get_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, _ = _load(year)
+    _, _, _, census_df, label_col, *rest = _load(year)
     indices = [_row_index(r) for r in body.rows]
     return _to_json(build_stack(census_df, indices, label_col))
 
@@ -72,7 +75,7 @@ def get_export(year: int, row: int, kind: str):
     if kind not in ("map", "bar"):
         raise HTTPException(status_code=400, detail="kind must be 'map' or 'bar'")
     
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, _ = _load(year)
     
     if kind == "map":
         fig_dict = build_map(geo_gdf, geo_dict, wards_gdf, census_df, _row_index(row), label_col, wards_name_col)
@@ -88,7 +91,7 @@ def get_export(year: int, row: int, kind: str):
 
 @app.post("/census/{year}/export/stack")
 def export_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, _ = _load(year)
+    _, _, _, census_df, label_col, *rest = _load(year)
     indices = [_row_index(r) for r in body.rows]
     fig_dict = build_stack(census_df, indices, label_col)
     pdf_bytes = export_pdf(fig_dict, "stack")

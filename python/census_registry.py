@@ -9,6 +9,8 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/CityWards.geojson",
         "label_col":      "Neighbourhood Name",
         "wards_name_col": "AREA_NAME",
+        "id_col": None,
+        "row_offset": 2,
     },
 
     2016: {
@@ -17,6 +19,8 @@ CENSUS_YEARS: dict[int, dict[str, str]] = {
         "wards":          "/Users/dereksong/Documents/torontoCensusVisualizer2/data/2021/CityWards.geojson",
         "label_col":      "Characteristic",
         "wards_name_col": "AREA_NAME",
+        "id_col": "_id",
+        "row_offset": 1,
     },
 }
 

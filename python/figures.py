@@ -218,6 +218,8 @@ def search_rows(
     query: str,
     limit: int = 5,
     label_col: str = "Neighbourhood Name",
+    id_col: str | None = None,
+    row_offset: int = 2,
 ) -> list[dict]:
     """
     Substring search across label column.
@@ -226,20 +228,18 @@ def search_rows(
     Returns list of {row, label}, row == 1-based display row number
     Go expects (matching the original row numbering convention).
     """
-    matched = census_df[
-        census_df[label_col].str.contains(
-            query, case=False, regex=False, na=False
-        )
-    ].head(limit)
+    query = query.strip()
 
+    if id_col and id_col in census_df.columns and query.isdigit():
+        mask = census_df[id_col].astype(str) == query
+    else:
+        mask = census_df[label_col].str.contains(query, case=False, regex=False, na=False)
+
+    matched = census_df[mask].head(limit)
     return [
-        {
-            "row":   int(idx) + 2,
-            "label": str(row[label_col]),
-        }
+        {"row": int(idx) + row_offset, "label": str(row[label_col])}
         for idx, row in matched.iterrows()
     ]
-
 
 
 def export_pdf(fig_dict: dict, kind: str) -> bytes:

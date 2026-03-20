@@ -11,6 +11,8 @@ import pandas as pd
 @lru_cache(maxsize=16)
 def load_census(path: str) -> pd.DataFrame:
     """Load and cache a census CSV; calls thereafter return from the local data structure."""
+
+
     return pd.read_csv(path)
 
 
