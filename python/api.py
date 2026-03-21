@@ -12,7 +12,7 @@ from data_loader import load_census, load_geo
 from figures import build_bar, build_map, build_stack, export_pdf, search_rows
 from rag import semantic_search
 from ask import answer as ask_answer
-
+import math
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
 
 class StackRequest(BaseModel):
@@ -20,6 +20,20 @@ class StackRequest(BaseModel):
 
 class AskRequest(BaseModel):
     question: str
+    confirmed_row_id: int | None = None
+    confirmed_year: int | None = None
+
+
+
+def _sanitize(obj):
+    """Recursively replace nan/inf with None for JSON compliance."""
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    return obj
 
 def _to_json(fig_dict: dict) -> Response:
     """Plotly's serializer handles numpy/pandas types that json.dumps cannot."""
@@ -130,4 +144,5 @@ def semantic_global(q: str):
 # natural language Q&A
 @app.post("/ask")
 def ask(body: AskRequest):
-    return JSONResponse(content=ask_answer(body.question))
+    result = ask_answer(body.question, body.confirmed_row_id, body.confirmed_year)
+    return JSONResponse(content=_sanitize(result))

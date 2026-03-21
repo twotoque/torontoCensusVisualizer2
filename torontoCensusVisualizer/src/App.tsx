@@ -78,16 +78,20 @@ async function handleAsk() {
     if (!isNaN(n)) { setRow(n); setSuggestions([]); }
   }
 
-  async function handleAskWithRowId(rowId: number, year: number) {
+async function handleAskWithRowId(rowId: number, confirmYear: number) {
   setQaLoading(true);
   setQaDisambiguation(null);
-  const d = await fetch(`${API}/ask`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, confirmed_row_id: rowId, confirmed_year: year }),
-  }).then(r => r.json());
-  setQaAnswer(d.answer || "No answer returned.");
-  setQaLoading(false);
+  try {
+    const d = await fetch(`${API}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, confirmed_row_id: rowId, confirmed_year: confirmYear }),
+    }).then(r => r.json());
+    console.log("confirmed response:", d);
+    setQaAnswer(d.answer || d.intent + ": no answer generated");
+  } finally {
+    setQaLoading(false);
+  }
 }
 
   // Stack chart

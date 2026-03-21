@@ -20,16 +20,19 @@ weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer
 
 # training wheels for the RAG
 ENRICHMENTS = {
-    "population": "total population count",
-    "income":     "average household total income",
-    "housing":    "dwelling units",
+    "population":        "total population count",
+    "income":            "average total income",
+    "household income":  "average household total income",
+    "housing":           "dwelling units",
     "neighbourhood number": "Neighbourhood Number",
 }
+
 BLOCKED_LABELS = {
     "Neighbourhood Number",
     "TSNS2020 Designation", 
     "Neighbourhood Name",
 }
+
 # Use word-boundary aware replacement to avoid breaking words like "income"
 STOP_WORDS = [
     "what was", "what is", "show me", "how did", "compare",
@@ -284,15 +287,18 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     }
     """
     # 1. parse query with PyTorch model
-    parsed        = parse(query)
-    intent        = parsed["intent"]
+    parsed         = parse(query)
+    intent         = parsed["intent"]
     neighbourhoods = parsed["neighbourhoods"]
-    years         = parsed["years"]
+    years          = parsed["years"]
 
     # 2. RAG — skip if user already confirmed a row
     if confirmed_row_id is not None and confirmed_year is not None:
-        row_ids = {confirmed_year: confirmed_row_id}
-        display_metric = query
+        row_ids        = {confirmed_year: confirmed_row_id}
+        years          = [confirmed_year]  # use confirmed year only
+        
+        confirmed_results = semantic_search(query, year=confirmed_year, limit=1)
+        display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
     else:
         search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
         results, needs_disambiguation = semantic_search_with_disambiguation(
@@ -305,7 +311,6 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 "intent": intent, "metric": None, "context": {}, "disambiguation": None,
             }
 
-        # return disambiguation options if ambiguous
         if needs_disambiguation:
             return {
                 "answer": None, "intent": intent, "metric": None, "context": {},
@@ -315,7 +320,6 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 ],
             }
 
-        # single clear match: build row_ids per year from it
         row_ids = _get_row_ids(query, neighbourhoods, years)
         if not row_ids:
             return {
@@ -323,7 +327,6 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 "intent": intent, "metric": results[0]["label"], "context": {}, "disambiguation": None,
             }
 
-        # update display_metric from the actual matched row label, which may be more specific than the original query
         first_year = next(iter(row_ids))
         year_results = semantic_search(
             f"{_clean_query_for_rag(query, neighbourhoods, [first_year]) or query} {first_year}",
@@ -362,4 +365,3 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         "context":        {"years": years, "neighbourhoods": neighbourhoods, "values": values},
         "disambiguation": None,
     }
-
