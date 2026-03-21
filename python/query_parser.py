@@ -176,12 +176,11 @@ def parse(query: str) -> dict:
 
     # fallback: direct substring match against known neighbourhood list
     if not spans["NEIGHBOURHOOD"]:
-        query_lower = query.lower()
+        query_lower = query.lower().replace("the ", "")
         spans["NEIGHBOURHOOD"] = [
             n for n in meta["neighbourhoods"]
             if n.lower() in query_lower
         ]
-
     years = _extract_years(query)
 
     #defaults

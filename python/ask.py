@@ -105,27 +105,27 @@ def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]
 
 
 def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dict:
-    search_query = _clean_query_for_rag(query, neighbourhoods, years)
-    if not search_query:
-        search_query = query
-
     row_ids = {}
     for year in years:
+        search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
+        # append year to help find year-specific rows like "Population, 2011"
+        if search_query and str(year) not in search_query:
+            search_query = f"{search_query} {year}"
+
         results = semantic_search(search_query, year=year, limit=5)
         results = [r for r in results if r["label"].strip() not in BLOCKED_LABELS]
         if not results:
             continue
 
-        # prefer rows whose label mentions the target year (population in 2011 vs "Population, 2011" in the 2021 census)
         year_str = str(year)
         year_match = [r for r in results if year_str in r["label"]]
-        if year_match and year_match[0]["score"] > 0.05:
-            row_ids[year] = year_match[0]["row_id"]
+        if year_match:
+            row_ids[year] = year_match[0]["row_id"]  # always prefer year match
         elif results[0]["score"] > 0.05:
             row_ids[year] = results[0]["row_id"]
 
+    
     return row_ids
-
 # answer tempaltes
 
 def _fmt(value) -> str:
@@ -304,14 +304,21 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 ],
             }
 
-        # single clear match — build row_ids per year from it
-        display_metric = results[0]["label"]
+        # single clear match: build row_ids per year from it
         row_ids = _get_row_ids(query, neighbourhoods, years)
         if not row_ids:
             return {
                 "answer": "Could not find a matching census metric for your query.",
-                "intent": intent, "metric": display_metric, "context": {}, "disambiguation": None,
+                "intent": intent, "metric": results[0]["label"], "context": {}, "disambiguation": None,
             }
+
+        # update display_metric from the actual matched row label, which may be more specific than the original query
+        first_year = next(iter(row_ids))
+        year_results = semantic_search(
+            f"{_clean_query_for_rag(query, neighbourhoods, [first_year]) or query} {first_year}",
+            year=first_year, limit=1
+        )
+        display_metric = year_results[0]["label"].strip() if year_results else results[0]["label"]
 
     # 3. Fetch values
     if intent == "ranking":
