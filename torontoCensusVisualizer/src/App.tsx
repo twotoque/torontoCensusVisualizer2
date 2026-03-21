@@ -1,293 +1,63 @@
-import { useState, useEffect } from "react";
-import Plot from "react-plotly.js";
+// App.tsx
+// Root component. Reads the search slot from context and passes it to TopBar.
+// No prop drilling — pages inject their own search via useSearchSlot().
 
-const API = "/api";
+import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import { tokens, type Theme } from "./colours";
+import { TopBar } from "./Topbar";
+import { Sidebar } from "./Sidebar";
+import { ChatPage } from "./ChatPage";
+import { CensusPage } from "./CensusPage";
+import { useSearchSlot } from "./SearchSlotContext";
 
 export default function App() {
-  const [year, setYear]       = useState(2021);
-  const [years, setYears]     = useState([2021]);
-  const [row, setRow]         = useState(37);
-  const [input, setInput]     = useState("37");
-const [suggestions, setSuggestions] = useState<{row: number, label: string}[]>([]);
-const [stackSuggestions, setStackSuggestions] = useState<{row: number, label: string}[]>([]);
-  const [mapFig, setMapFig] = useState<any>(null);
-  const [barFig, setBarFig] = useState<any>(null);
-  const [stackFig, setStackFig] = useState<any>(null);
-const [stackRows, setStackRows] = useState<number[]>([]);
-  const [stackInput, setStackInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  
-  const [question, setQuestion]   = useState("");
-const [qaAnswer, setQaAnswer]   = useState<string | null>(null);
-const [qaLoading, setQaLoading] = useState(false)
-const [qaDisambiguation, setQaDisambiguation] = useState<any[] | null>(null);
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem("theme") as Theme) || "light"
+  );
+  const t = tokens[theme];
+  const { slot } = useSearchSlot();
 
-
-async function handleAsk() {
-  if (!question.trim()) return;
-  setQaLoading(true);
-  setQaAnswer(null);
-  setQaDisambiguation(null); 
-  try {
-    const d = await fetch(`${API}/ask`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
-    }).then(r => r.json());
-    console.log(d);
-    setQaAnswer(d.answer || null);
-    setQaDisambiguation(d.disambiguation || null);
-  } catch {
-    setQaAnswer("Error contacting the server.");
-  } finally {
-    setQaLoading(false);
-  }
-}
-
-
-  // Load available years on mount
-  useEffect(() => {
-    fetch(`${API}/years`)
-      .then(r => r.json())
-      .then(d => setYears(d.years));
-  }, []);
-
-  // Fetch map + bar whenever year or row changes
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch(`${API}/census/${year}/row/${row}/map`).then(r => r.json()),
-      fetch(`${API}/census/${year}/row/${row}/bar`).then(r => r.json()),
-    ]).then(([map, bar]) => {
-      setMapFig(map);
-      setBarFig(bar);
-    }).finally(() => setLoading(false));
-  }, [year, row]);
-
-  // Search suggestions for single var
-  async function handleSearch(q: string) {
-      setInput(q);
-      if (!q) { setSuggestions([]); return; }
-      const d = await fetch(
-          `${API}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`
-      ).then(r => r.json());
-      setSuggestions(d.results || []);
-  }
-  function submitRow() {
-    const n = parseInt(input);
-    if (!isNaN(n)) { setRow(n); setSuggestions([]); }
-  }
-
-async function handleAskWithRowId(rowId: number, confirmYear: number) {
-  setQaLoading(true);
-  setQaDisambiguation(null);
-  try {
-    const d = await fetch(`${API}/ask`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, confirmed_row_id: rowId, confirmed_year: confirmYear }),
-    }).then(r => r.json());
-    console.log("confirmed response:", d);
-    setQaAnswer(d.answer || d.intent + ": no answer generated");
-  } finally {
-    setQaLoading(false);
-  }
-}
-
-  // Stack chart
-  async function addStackRow(r: number) {
-    const next = [...stackRows, r];
-    setStackRows(next);
-    setStackInput("");
-    setStackSuggestions([]);
-    const fig = await fetch(`${API}/census/${year}/stack`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: next }),
-    }).then(r => r.json());
-    setStackFig(fig);
-  }
-
-  async function removeStackRow(i: number) {
-    const next = stackRows.filter((_, idx) => idx !== i);
-    setStackRows(next);
-    if (next.length === 0) { setStackFig(null); return; }
-    const fig = await fetch(`${API}/census/${year}/stack`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: next }),
-    }).then(r => r.json());
-    setStackFig(fig);
-  }
-
-  async function handleStackSearch(q : any) {
-    setStackInput(q);
-    if (!q || !isNaN(q)) { setStackSuggestions([]); return; }
-    const d = await fetch(`${API}/census/${year}/search?q=${encodeURIComponent(q)}`).then(r => r.json());
-    setStackSuggestions(d.results || []);
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("theme", next);
   }
 
   return (
-    <div style={{ padding: 16, fontFamily: "sans-serif" }}>
+    <div style={{
+      display: "flex", flexDirection: "column",
+      width: "100vw", height: "100vh",
+      background: t.bg, color: t.text,
+      fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
+      transition: "background 0.2s, color 0.2s",
+    }}>
+      {/* TopBar reads slot from context via App — no child-to-parent state */}
+      <TopBar t={t} theme={theme} onToggle={toggleTheme} searchSlot={slot} />
 
-      {/* Year selector */}
-      <div>
-        <label>Year: </label>
-        <select value={year} onChange={e => setYear(Number(e.target.value))}>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Sidebar t={t} />
+
+        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <Routes>
+            <Route path="/"       element={<ChatPage   t={t} />} />
+            <Route path="/census" element={<CensusPage t={t} />} />
+          </Routes>
+        </main>
       </div>
 
-<div style={{ marginBottom: 16, padding: 12, border: "1px solid #ccc", borderRadius: 4 }}>
-  <label><strong>Ask a question:</strong></label>
-  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-    <input
-      style={{ flex: 1, padding: "6px 8px" }}
-      value={question}
-      onChange={e => setQuestion(e.target.value)}
-      onKeyDown={e => e.key === "Enter" && handleAsk()}
-      placeholder="e.g. What was the population of Annex in 2011?"
-    />
-    <button onClick={handleAsk} disabled={qaLoading}>
-      {qaLoading ? "Thinking..." : "Ask"}
-    </button>
-  </div>
-{qaAnswer && (
-  <div style={{ marginTop: 8 }}>
-    <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>
-      {qaAnswer}
-    </pre>
-  </div>
-)}
-
-{qaDisambiguation && (
-  <div style={{ marginTop: 8, background: "#fff8e1", padding: 8, borderRadius: 4 }}>
-    <p><strong>Multiple matches found — which did you mean?</strong></p>
-    {qaDisambiguation.map((opt: any, i: number) => (
-      <button
-        key={i}
-        style={{ display: "block", margin: "4px 0", padding: "4px 8px", cursor: "pointer" }}
-        onClick={() => handleAskWithRowId(opt.row_id, opt.year)}
-      >
-        {opt.document || opt.label} ({opt.year})
-      </button>
-    ))}
-  </div>
-)}
-</div>
-
-      <br />
-
-      {/* Row search */}
-      <div>
-        <label>Row: </label>
-        <input
-          value={input}
-          onChange={e => handleSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submitRow()}
-          placeholder="Row number or name..."
-        />
-        <button onClick={submitRow}>Load</button>
-
-        {suggestions.length > 0 && (
-          <ul style={{ listStyle: "none", padding: 0, border: "1px solid #ccc", width: 300 }}>
-            {suggestions.map(s => (
-              <li key={s.row}
-                style={{ padding: "4px 8px", cursor: "pointer" }}
-                onClick={() => { setInput(String(s.row)); setSuggestions([]); setRow(s.row); }}>
-                Row {s.row} — {s.label}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <br />
-
-      {/* Export buttons */}
-      <div>
-        <a href={`${API}/census/${year}/row/${row}/export/map`} target="_blank" rel="noreferrer">
-          <button>Export map PDF</button>
-        </a>
-        {" "}
-        <a href={`${API}/census/${year}/row/${row}/export/bar`} target="_blank" rel="noreferrer">
-          <button>Export bar PDF</button>
-        </a>
-      </div>
-
-      <br />
-
-
-      {/* Map */}
-      
-      {loading && <p>Loading...</p>}
-      {mapFig && (
-        <div className="w-screen" >
-  <Plot
-    key={JSON.stringify(mapFig.layout.title)} 
-    data={mapFig.data}
-    layout={{ ...mapFig.layout, autosize: true }}
-    style={{ width: "100%", height: "600px" }}
-    useResizeHandler
-  />
-        </div>
-      )}
-
-      {/* Bar */}
-      {barFig && (
-        <Plot
-          data={barFig.data}
-          layout={{ ...barFig.layout, autosize: true }}
-          style={{ width: "100%", height: 500 }}
-          useResizeHandler
-        />
-      )}
-
-      <hr />
-
-      {/* Stack section */}
-      <h3>Stacked comparison</h3>
-      <div>
-        <input
-          value={stackInput}
-          onChange={e => handleStackSearch(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !isNaN(Number(stackInput)) && stackInput) addStackRow(parseInt(stackInput)); }}
-          placeholder="Row number or name..."
-        />
-        <button onClick={() => { if (!isNaN(Number(stackInput)) && stackInput) addStackRow(parseInt(stackInput)); }}>
-          Add
-        </button>
-
-        {stackSuggestions.length > 0 && (
-          <ul style={{ listStyle: "none", padding: 0, border: "1px solid #ccc", width: 300 }}>
-            {stackSuggestions.map(s => (
-              <li key={s.row}
-                style={{ padding: "4px 8px", cursor: "pointer" }}
-                onClick={() => addStackRow(s.row)}>
-                Row {s.row} — {s.label}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div style={{ marginTop: 8 }}>
-        {stackRows.map((r, i) => (
-          <button key={i} onClick={() => removeStackRow(i)} style={{ marginRight: 4 }}>
-            Row {r} ✕
-          </button>
-        ))}
-      </div>
-
-      {stackFig && (
-        <Plot
-          data={stackFig.data}
-          layout={{ ...stackFig.layout, autosize: true }}
-          style={{ width: "100%", height: 500 }}
-          useResizeHandler
-        />
-      )}
-
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${t.border}; border-radius: 3px; }
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-5px); }
+        }
+      `}</style>
     </div>
   );
 }
