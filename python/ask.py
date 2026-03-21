@@ -7,6 +7,8 @@
 #
 # Everything is localish 
 
+import re
+
 from query_parser import parse
 from rag import semantic_search, semantic_search_with_disambiguation
 from data_loader import load_census
@@ -28,7 +30,14 @@ BLOCKED_LABELS = {
     "TSNS2020 Designation", 
     "Neighbourhood Name",
 }
-
+# Use word-boundary aware replacement to avoid breaking words like "income"
+STOP_WORDS = [
+    "what was", "what is", "show me", "how did", "compare",
+    "which neighbourhood", "highest", "lowest", "over time",
+    "changed", "difference", "between", "terms of",
+    "from", "how has", "historical", "trend",
+    r"\bthe\b", r"\band\b", r"\bin\b", r"\bto\b", r"\bof\b",
+]
 
 def _fetch_values(
     row_ids: dict,     
@@ -87,7 +96,6 @@ def _resolve_neighbourhood(name: str, weights_df: pd.DataFrame, year: int) -> di
     
     return dict(zip(matches["AREA_NAME_2"], matches["weight"]))
 
-
 def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]) -> str:
     """Remove neighbourhood names and years from query to get a cleaner metric search."""
     cleaned = query.lower()
@@ -95,13 +103,16 @@ def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]
         cleaned = cleaned.replace(n.lower(), "")
     for y in years:
         cleaned = cleaned.replace(str(y), "")
-    for word in ["what was", "what is", "show me", "how did", "compare",
-                 "which neighbourhood", "highest", "lowest", "over time",
-                 "changed", "difference", "between", "and", "in", "the",
-                 "from", "to", "how has", "historical", "trend", "terms of"]:
-        cleaned = cleaned.replace(word, " ")
+    
+    
+    for word in STOP_WORDS:
+        if word.startswith(r"\b"):
+            cleaned = re.sub(word, " ", cleaned)
+        else:
+            cleaned = cleaned.replace(word, " ")
+    
     cleaned = " ".join(cleaned.split()).strip()
-    return ENRICHMENTS.get(cleaned, cleaned)  
+    return ENRICHMENTS.get(cleaned, cleaned)
 
 
 def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dict:

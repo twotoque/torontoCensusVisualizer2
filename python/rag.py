@@ -11,18 +11,19 @@ def semantic_search_with_disambiguation(
     year: int | None = None,
     limit: int = 5,
     similarity_threshold: float = 0.05,  # scores within this range are "similar"
+    min_score: float = 0.1,  # reject results below this entirely
 ) -> tuple[list[dict], bool]:
     """
     Returns (results, needs_disambiguation).
     needs_disambiguation is True if top results are too close to call.
     """
     results = semantic_search(query, year=year, limit=limit)
+    results = [r for r in results if r["score"] > min_score]
     if not results:
         return [], False
     
     top_score = results[0]["score"]
     similar = [r for r in results if top_score - r["score"] <= similarity_threshold]
-    
     needs_disambiguation = len(similar) > 1
     return similar if needs_disambiguation else results[:1], needs_disambiguation
 
