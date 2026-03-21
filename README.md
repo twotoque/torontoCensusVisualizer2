@@ -25,3 +25,7 @@ Requests are managed from Python -> Go -> TypeScript
 2.  **RAG** finds the row ID for "Average household total income".
 3.  **Ask** fetches values for those years and calculates the difference.
 4.  **API** returns a JSON response with a human-readable text answer.
+
+## Preview
+![App Preview](https://raw.githubusercontent.com/twotoque/torontoCensusVisualizer2/main/preview%20pics/preview%201.png)
+![App Preview](https://raw.githubusercontent.com/twotoque/torontoCensusVisualizer2/main/preview%20pics/preview%202.png)
