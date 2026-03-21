@@ -1,8 +1,8 @@
 # Toronto Census Visualizer 2 
 
-A modular Python-based backend designed to parse natural language questions about Toronto Census data (2001–2021) and return structured answers, maps, and statistical charts.
+A website to parse natural language questions about Toronto Census data (2001–2021) and return structured answers, maps, and statistical charts.
 
-The system uses a combination of deep learning (transformer-based named entity recongition/intent classification) and a RAG (vector search) to break down census queries easier 
+The system uses a combination of deep learning (transformer-based named entity recongition/intent classification) and a RAG (vector search) to break down census queries easier. 
 
 ## System Architecture
 
@@ -12,6 +12,8 @@ The project follows a pipeline to process a query:
 2.  **Retrieve (`rag.py`)**: Performs a vector search via ChromaDB to find the census row ID corresponding to the user's requested metric.
 3.  **Fetch (`ask.py` / `data_loader.py`)**: Fetches it from the CSV. `data/weights/140_to_158.parquet` is used to convert it appx. from the old 140 to the newer 158 neighbourhood model 
 4.  **Visualize/Respond (`api.py`)**: Generates a human-readable text response or exports data as Plotly charts and PDF maps
+
+Requests are managed from Python -> Go -> TypeScript 
 
 ## Example Usage
 
