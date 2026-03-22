@@ -76,7 +76,7 @@ interface CensusSearchProps {
 
 export const CensusSearch: React.FC<CensusSearchProps> = ({ t, year, onSelect }) => {
   const [input, setInput]           = useState("");
-  const [suggestions, setSuggestions] = useState<{ row: number; label: string }[]>([]);
+  const [suggestions, setSuggestions] = useState<{ row_id: number; label: string; document?: string; year?: number }[]>([]);
 
   async function handleChange(q: string) {
     setInput(q);
@@ -85,12 +85,13 @@ export const CensusSearch: React.FC<CensusSearchProps> = ({ t, year, onSelect })
     setSuggestions(d.results || []);
   }
 
+  
+
   function submit() {
     const n = parseInt(input);
     if (!isNaN(n)) { onSelect(n); setInput(""); setSuggestions([]); }
-    else if (suggestions.length > 0) { onSelect(suggestions[0].row); setInput(""); setSuggestions([]); }
+    else if (suggestions.length > 0) { onSelect(suggestions[0].row_id); setInput(""); setSuggestions([]); }
   }
-
   return (
     <div style={{ position: "relative", display: "flex", gap: 6, alignItems: "center", width: "100%", maxWidth: 480 }}>
       <input
@@ -118,29 +119,44 @@ export const CensusSearch: React.FC<CensusSearchProps> = ({ t, year, onSelect })
         Load
       </button>
 
-      {/* Suggestions dropdown */}
+{/* Suggestions dropdown */}
       {suggestions.length > 0 && (
-        <ul style={{
-          position: "absolute", top: "100%", left: 0, right: 0,
-          zIndex: 50, listStyle: "none", padding: 0, margin: "4px 0 0",
-          border: `1px solid ${t.border}`, borderRadius: 8,
-          background: t.surface, boxShadow: t.shadowMd,
-        }}>
-          {suggestions.map(sg => (
-            <li
-              key={sg.row}
-              onClick={() => { onSelect(sg.row); setInput(""); setSuggestions([]); }}
-              style={{
-                padding: "8px 12px", cursor: "pointer", fontSize: 13,
-                borderBottom: `1px solid ${t.border}`, color: t.text,
-              }}
-            >
-              <span style={{ color: t.textMuted, fontSize: 11, marginRight: 6 }}>#{sg.row}</span>
-              {sg.label}
-            </li>
-          ))}
-        </ul>
-      )}
+  <ul style={{
+    position: "absolute", top: "100%", left: 0, right: 0,
+    zIndex: 50, listStyle: "none", padding: 0, margin: "4px 0 0",
+    border: `1px solid ${t.border}`, borderRadius: 8,
+    background: t.surface, boxShadow: t.shadowMd,
+  }}>
+    {suggestions.map(sg => (
+      
+      <li
+        key={sg.row_id}
+        onClick={() => { onSelect(sg.row_id); setInput(""); setSuggestions([]); }}
+        style={{
+          padding: "8px 12px", cursor: "pointer", fontSize: 13,
+          borderBottom: `1px solid ${t.border}`, color: t.text,
+          display: "flex", alignItems: "center", gap: 8,
+        }}
+      >
+        <span style={{ color: t.textMuted, fontSize: 11, flexShrink: 0 }}>#{sg.row_id}</span>
+        <span style={{ flex: 1 }}>{sg.label}</span>
+        {"year" in sg && (
+          <span style={{
+            fontSize: 10, fontWeight: 600, padding: "2px 6px",
+            borderRadius: 4, background: t.surfaceAlt,
+            border: `1px solid ${t.border}`, color: t.textMuted,
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            {(sg as any).year}
+          </span>
+        )}
+      </li>
+    ))}
+  </ul>
+)}
+
+
+      
     </div>
   );
 };
