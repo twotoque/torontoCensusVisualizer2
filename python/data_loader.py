@@ -7,6 +7,14 @@ from functools import lru_cache
 import geopandas as gpd
 import pandas as pd
 
+def normalize_label(label: str) -> str:
+    """Strip leading spaces/indentation from census labels for cross-year matching."""
+    return label.strip()
+
+def get_label_depth(label: str) -> int:
+    """Return nesting depth based on leading spaces (2 spaces per level)."""
+    return (len(label) - len(label.lstrip())) // 2
+    
 
 @lru_cache(maxsize=16)
 def load_census(path: str, drop_cols: tuple[str, ...] = ()) -> pd.DataFrame:

@@ -73,6 +73,99 @@ def resolve_row(census_df: pd.DataFrame, row: int, id_col: str | None = None) ->
         return int(matches.index[0])
     return row - 2  # 2021 convention
 
+@app.get("/census/{year}/row/{row}/compare/{prev_year}")
+def compare_years(year: int, row: int, prev_year: int):
+    """
+    Returns {neighbourhood: {current: value, prev: value}} 
+    for a given row across two years, with neighbourhood alignment.
+    """
+    curr_paths = get_paths(year)
+    prev_paths = get_paths(prev_year)
+
+    curr_df = load_census(curr_paths["census"], drop_cols=tuple(curr_paths.get("drop_cols", ())))
+    prev_df = load_census(prev_paths["census"], drop_cols=tuple(prev_paths.get("drop_cols", ())))
+
+    # Resolve current row
+    curr_id_col = curr_paths.get("id_col")
+    if curr_id_col and curr_id_col in curr_df.columns:
+        curr_matches = curr_df[curr_df[curr_id_col] == row]
+        if curr_matches.empty:
+            return {"error": "row not found"}
+        curr_row = curr_matches.iloc[0]
+        curr_label = curr_row[curr_paths["label_col"]].strip()
+    else:
+        curr_row = curr_df.iloc[row]
+        curr_label = curr_row[curr_paths["label_col"]].strip()
+
+    # Find equivalent row in prev year by label match
+    prev_label_col = prev_paths["label_col"]
+    prev_matches = prev_df[prev_df[prev_label_col].str.strip() == curr_label]
+    if prev_matches.empty:
+        prev_matches = prev_df[prev_df[prev_label_col].str.strip().str.contains(
+            curr_label[:30], case=False, na=False
+        )]
+    if prev_matches.empty:
+        return {"error": f"no matching row for '{curr_label}' in {prev_year}"}
+    prev_row = prev_matches.iloc[0]
+
+    # Get neighbourhood columns for current year
+    curr_label_col = curr_paths["label_col"]
+    col_start = curr_df.columns.get_loc(curr_label_col)
+    curr_neighbourhoods = list(curr_df.columns[col_start + 1:])
+
+    weights_df = pd.read_parquet(
+        "/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet"
+    )
+
+    result  = {}
+    mapping = {}
+
+    for col in curr_neighbourhoods:
+        try:
+            curr_val = float(str(curr_row[col]).replace(",", "").replace("%", ""))
+        except (ValueError, TypeError):
+            continue
+
+        old_names = weights_df[weights_df["AREA_NAME_2"] == col]
+
+        if not old_names.empty and year == 2021:
+            # 158 → 140 weighted mapping
+            prev_val     = 0.0
+            total_weight = 0.0
+            sources      = []
+            for _, wrow in old_names.iterrows():
+                old_name = wrow["AREA_NAME_1"]
+                weight   = wrow["weight"]
+                if old_name in prev_df.columns:
+                    try:
+                        v = float(str(prev_row[old_name]).replace(",", "").replace("%", ""))
+                        prev_val     += v * weight
+                        total_weight += weight
+                        sources.append({"name": old_name, "weight": round(float(weight), 3)})
+                    except (ValueError, TypeError):
+                        pass
+            if total_weight > 0:
+                result[col] = {"current": curr_val, "prev": prev_val / total_weight}
+                if len(sources) > 1:
+                    mapping[col] = sources
+        else:
+            # Same neighbourhood system — direct lookup
+            if col in prev_df.columns:
+                try:
+                    prev_val = float(str(prev_row[col]).replace(",", "").replace("%", ""))
+                    result[col] = {"current": curr_val, "prev": prev_val}
+                except (ValueError, TypeError):
+                    pass
+
+    return {
+        "curr_label": curr_label,
+        "prev_label": prev_row[prev_label_col].strip(),
+        "year":       year,
+        "prev_year":  prev_year,
+        "data":       result,
+        "mapping":    mapping,
+    }
+
 @app.get("/years")
 def get_years():
     return JSONResponse(content={"years": available_years()})

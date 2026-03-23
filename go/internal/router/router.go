@@ -57,6 +57,7 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	r.Post("/api/census/{year}/stack",                   ro.getStack)
 	r.Get("/api/census/{year}/row/{row}/export/{kind}",  ro.exportFigure)
 	r.Post("/api/census/{year}/export/stack",            ro.exportStack)
+	r.Get("/api/census/{year}/row/{row}/compare/{prevYear}", ro.compareYears)
 
 	//rag fns 
 	r.Get("/api/census/{year}/semantic-search", ro.semanticSearch)
@@ -177,4 +178,15 @@ func (ro *Router) semanticSearchGlobal(w http.ResponseWriter, r *http.Request) {
 }
 func (ro *Router) ask(w http.ResponseWriter, r *http.Request) {
     ro.figures.Post(w, r, "/ask", "", "application/json")
+}
+
+func (ro *Router) compareYears(w http.ResponseWriter, r *http.Request) {
+    year    := paramYear(r)
+    row     := paramRow(r)
+    prevYear, _ := strconv.Atoi(chi.URLParam(r, "prevYear"))
+    ro.figures.Get(w,
+        fmt.Sprintf("/census/%d/row/%d/compare/%d", year, row, prevYear),
+        fmt.Sprintf("compare:%d:%d:%d", year, row, prevYear),
+        "application/json",
+    )
 }

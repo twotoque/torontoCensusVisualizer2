@@ -366,6 +366,7 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
   const [loading, setLoading] = useState(false);
   const [title, setTitle]     = useState("");
   const [changeData, setChangeData] = useState<ChangeRow[]>([]);
+  const [biggest, setBiggest] = useState<BiggestItem[]>([]);
 
   // Load years
   useEffect(() => {
@@ -377,46 +378,55 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
 
   // Load figures + change data
   useEffect(() => {
-    setLoading(true);
-    const prevYear = PREV_YEAR[year] ?? year;
-    Promise.all([
-      fetch(`${API}/census/${year}/row/${row}/map`).then(r => r.json()),
-      fetch(`${API}/census/${year}/row/${row}/bar`).then(r => r.json()),
-      prevYear !== year
-        ? fetch(`${API}/census/${prevYear}/row/${row}/bar`).then(r => r.json())
-        : Promise.resolve(null),
-    ]).then(([map, bar, prevBar]) => {
-      setMapFig(map);
-      setBarFig(bar);
-      if (bar?.layout?.title?.text) setTitle(bar.layout.title.text);
-      if (bar?.data?.[0] && prevBar?.data?.[0]) {
-        const curX: string[]  = bar.data[0].x || [];
-        const curY: number[]  = bar.data[0].y || [];
-        const prevMap: Record<string, number> = {};
-        (prevBar.data[0].x as string[]).forEach((n, i) => { prevMap[n] = prevBar.data[0].y[i]; });
-        setChangeData(
-          curX.map((n, i) => ({ neighbourhood: n, current: curY[i], prev: prevMap[n] ?? 0 }))
-            .filter(r => r.current && r.prev)
-            .sort((a, b) => Math.abs(b.current - b.prev) - Math.abs(a.current - a.prev))
-            .slice(0, 8)
-        );
-      }
-    }).finally(() => setLoading(false));
-  }, [year, row]);
+  setLoading(true);
+  setBiggest([]);
+  setChangeData([]);
+  const prevYear = PREV_YEAR[year] ?? year;
+  Promise.all([
+    fetch(`${API}/census/${year}/row/${row}/map`).then(r => r.json()),
+    fetch(`${API}/census/${year}/row/${row}/bar`).then(r => r.json()),
+    prevYear !== year
+      ? fetch(`${API}/census/${year}/row/${row}/compare/${prevYear}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      : Promise.resolve(null),
+  ]).then(([map, bar, compareData]) => {
+    setMapFig(map);
+    setBarFig(bar);
+    if (bar?.layout?.title?.text) setTitle(bar.layout.title.text);
+
+    if (bar?.data?.[0]) {
+      setBiggest(
+        (bar.data[0].x as string[])
+          .map((n: string, i: number) => ({ name: n, val: bar.data[0].y[i] as number }))
+          .filter(x => x.val && x.val > 0)
+          .sort((a, b) => b.val - a.val)
+          .slice(0, 2)
+      );
+    }
+
+    if (compareData?.data) {
+      setChangeData(
+        Object.entries(compareData.data)
+          .map(([n, v]: [string, any]) => ({
+            neighbourhood: n,
+            current:       v.current,
+            prev:          v.prev,
+            mapping:       compareData.mapping?.[n] ?? undefined,
+          }))
+          .filter(r => r.current && r.prev)
+          .sort((a, b) => Math.abs(b.current - b.prev) - Math.abs(a.current - a.prev))
+          .slice(0, 8)
+      );
+    }
+  }).finally(() => setLoading(false));
+}, [year, row]);
 
   // Inject search into TopBar via context — clean on unmount
   useEffect(() => {
     setSlot(<CensusSearch t={t} year={year} onSelect={setRow} />);
     return () => setSlot(null);
   }, [t, year]);
-
-  const biggest: BiggestItem[] = barFig?.data?.[0]
-    ? (barFig.data[0].x as string[])
-        .map((n: string, i: number) => ({ name: n, val: barFig.data[0].y[i] as number }))
-        .filter(x => x.val)
-        .sort((a, b) => b.val - a.val)
-        .slice(0, 2)
-    : [];
 
   const prevYear = PREV_YEAR[year] ?? year;
 
