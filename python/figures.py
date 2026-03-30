@@ -8,11 +8,22 @@ import textwrap
 import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
+def get_safe_label(census_df: pd.DataFrame, row_index: int, label_col: str) -> str:
+    if "Combined_Label" in census_df.columns:
+        val = str(census_df["Combined_Label"].iloc[row_index])
+    else:
+        row = census_df.iloc[row_index]
+        val = str(next(
+            (row[c] for c in ["Characteristic", "Attribute", label_col] if c in row and pd.notna(row[c])),
+            "Unknown"
+        ))
+    print(val)
+    return val
 
 def build_map(
     geo_gdf, geo_dict, wards_gdf, census_df,
     row_index, label_col="Neighbourhood Name", wards_name_col="AREA_NAME"
-) -> dict:
+) -> dict: 
     """
     Map for a single census row across all Toronto neighbourhoods.
     Equivalent to the original censusMap() function.
@@ -22,7 +33,8 @@ def build_map(
     React renders it with Plotly.js
     """
     columns_set = set(census_df.columns)
-    graph_title = str(census_df.iloc[row_index][label_col])
+    graph_title = get_safe_label(census_df, row_index, label_col)
+    
 
     z_values: list = []
     for _, geo_row in geo_gdf.drop(columns="geometry").iterrows():
@@ -117,14 +129,16 @@ def build_bar(
     """
     col_start   = census_df.columns.get_loc(label_col)
     row         = census_df.iloc[row_index]
-    graph_title = str(row[label_col])
-    raw_values  = row.iloc[col_start + 1:].to_list()
-    x_values    = census_df.columns.to_list()[col_start + 1:]
+    graph_title = get_safe_label(census_df, row_index, label_col)
+    raw_values = row.iloc[col_start + 1:].to_list()
+    x_values   = census_df.columns.to_list()[col_start + 1:]
 
-    try:
-        y_values = list(map(float, raw_values))
-    except ValueError:
-        y_values = raw_values
+    y_values = []
+    for v in raw_values:
+        try:
+            y_values.append(float(str(v).replace(",", "").replace("%", "").strip()))
+        except (ValueError, TypeError):
+            y_values.append(None)
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -133,10 +147,9 @@ def build_bar(
         name="Neighbourhood<br>Data",
         marker_color="blue",
     ))
-
     # Median line
     if y_values and isinstance(y_values[0], float):
-        median = statistics.median(y_values)
+        median = statistics.median([v for v in y_values if v is not None])
         x1_endpoint = len(x_values)
 
         fig.add_shape(

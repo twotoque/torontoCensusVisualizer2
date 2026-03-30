@@ -18,15 +18,25 @@ def get_label_depth(label: str) -> int:
 
 @lru_cache(maxsize=16)
 def load_census(path: str, drop_cols: tuple[str, ...] = ()) -> pd.DataFrame:
-    """Load and cache a census CSV; calls thereafter return from the local data structure."""
     df = pd.read_csv(path)
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+    # build Combined_Label for pre-2021 years that have Category/Topic/Attribute
+    if all(c in df.columns for c in ["Category", "Topic", "Attribute"]):
+        def _build_label(row):
+            parts = [
+                str(row[c]).strip()
+                for c in ["Category", "Topic", "Attribute"]
+                if pd.notna(row[c]) and str(row[c]).strip()
+            ]
+            return " \u2014 ".join(parts)
+        df["Combined_Label"] = df.apply(_build_label, axis=1)
+
     neighbourhood_cols = df.columns[5:]
     df[neighbourhood_cols] = df[neighbourhood_cols].replace(
         {r',': '', r'%': ''}, regex=True
     )
     return df
-
 
 @lru_cache(maxsize=16)
 def load_geo(path: str) -> tuple[gpd.GeoDataFrame, dict]:
