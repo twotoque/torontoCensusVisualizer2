@@ -47,13 +47,9 @@ def load_permit_features() -> pd.DataFrame:
     return agg
 
 
-def _get_permit_features_for(ward: str, year: float) -> dict:
-    """
-    Look up aggregated permit features for a given ward + year.
-    Returns zeros if no data is available (e.g. forecast years).
-    """
+def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
     permit_df = load_permit_features()
-    key = (ward, int(year))
+    key = (neighbourhood, int(year))
     if key in permit_df.index:
         row = permit_df.loc[key]
         return {
@@ -114,7 +110,7 @@ def forecast(
     X_norm = ((all_years - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
     y_pred, y_std = gp.predict(X_norm, return_std=True)
 
-    shap_values = _compute_shap(pop_df, neighbourhood, years, values, ward=ward)
+    shap_values = _compute_shap(pop_df, neighbourhood, years, values)
 
     return {
         "neighbourhood": neighbourhood,
@@ -160,7 +156,7 @@ def _compute_shap(
     optionally enriched with per-ward permit aggregates.
     Returns SHAP values for the target neighbourhood explaining each year's prediction.
     """
-    use_permits = ward is not None
+    use_permits = True
 
     rows = []
     for neigh, neigh_row in pop_df.iterrows():
@@ -179,7 +175,7 @@ def _compute_shap(
             # Permit features are attached via the target ward only;
             # other neighbourhoods get zeros (we don't have their ward mappings here).
             if use_permits:
-                permit_feat = _get_permit_features_for(ward, y) \
+                permit_feat = _get_permit_features_for(neigh, y) \
                     if neigh == target_neighbourhood \
                     else {f: 0.0 for f in PERMIT_FEATURES}
                 entry.update(permit_feat)
