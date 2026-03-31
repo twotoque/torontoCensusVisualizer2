@@ -146,7 +146,7 @@ def compare_years(year: int, row: int, prev_year: int):
         old_names = weights_df[weights_df["AREA_NAME_2"] == col]
 
         if not old_names.empty and year == 2021:
-            # 158 → 140 weighted mapping (parquet)
+            # 140 → 158 weighted mapping (parquet)
             prev_val     = 0.0
             total_weight = 0.0
             sources      = []
