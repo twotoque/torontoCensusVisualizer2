@@ -358,35 +358,36 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
       <div style={{ fontWeight: 600, color: t.text, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
         {row.neighbourhood}
         {row.mapping && row.mapping.length > 0 && (
-<div style={{ position: "relative", display: "inline-flex" }}
-  onMouseEnter={e => (e.currentTarget.querySelector('.tooltip') as HTMLElement).style.display = 'block'}
-  onMouseLeave={e => (e.currentTarget.querySelector('.tooltip') as HTMLElement).style.display = 'none'}
->
-  <span style={{
-    display: "inline-flex", alignItems: "center", justifyContent: "center",
-    width: 14, height: 14, borderRadius: "50%",
-    background: t.surfaceAlt, border: `1px solid ${t.border}`,
-    color: t.textMuted, fontSize: 9, fontWeight: 700,
-    cursor: "help", flexShrink: 0,
-  }}>i</span>
-  <div className="tooltip" style={{
-    display: "none", position: "absolute",
-    bottom: "100%", left: 0, zIndex: 100,
-    background: "#2a2a2a", color: "#eee",
-    borderRadius: 6, padding: "6px 10px",
-    fontSize: 11, whiteSpace: "nowrap",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-    marginBottom: 4, minWidth: 160,
-  }}>
-    {row.mapping.map((m, mi) => (
-      <div key={mi} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-        <span>{m.name}</span>
-        <span style={{ color: "#aaa" }}>{(m.weight * 100).toFixed(0)}%</span>
-      </div>
-    ))}
+  <div style={{ position: "relative", display: "inline-flex" }}
+    onMouseEnter={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'block'}
+    onMouseLeave={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'none'}
+  >
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 14, height: 14, borderRadius: "50%",
+      background: t.surfaceAlt, border: `1px solid ${t.border}`,
+      color: t.textMuted, fontSize: 9, fontWeight: 700,
+      cursor: "help", flexShrink: 0,
+    }}>i</span>
+    <div className="tip" style={{
+      display: "none", position: "absolute",
+      bottom: "calc(100% + 4px)", left: 0, zIndex: 100,
+      background: "#2a2a2a", color: "#eee",
+      borderRadius: 6, padding: "6px 10px",
+      fontSize: 11, whiteSpace: "nowrap",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+      minWidth: 180,
+    }}>
+      <div style={{ color: "#888", fontSize: 10, marginBottom: 4 }}>2016 sources</div>
+      {row.mapping.map((m, mi) => (
+        <div key={mi} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+          <span>{m.name}</span>
+          <span style={{ color: "#aaa" }}>{(m.weight * 100).toFixed(0)}%</span>
+        </div>
+      ))}
+    </div>
   </div>
-</div>
-        )}
+)}
       </div>
       <div>
         <div style={{ color: t.text }}>{fmt(row.current)}</div>
