@@ -10,6 +10,7 @@ import { Sidebar } from "./Sidebar";
 import { ChatPage } from "./ChatPage";
 import { CensusPage } from "./CensusPage";
 import { useSearchSlot } from "./SearchSlotContext";
+import { PredictionPage } from "./PredictionPage";
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(
@@ -42,6 +43,7 @@ export default function App() {
           <Routes>
             <Route path="/"       element={<ChatPage   t={t} />} />
             <Route path="/census" element={<CensusPage t={t} />} />
+            <Route path="/prediction" element={<PredictionPage t={t} />} />
           </Routes>
         </main>
       </div>
