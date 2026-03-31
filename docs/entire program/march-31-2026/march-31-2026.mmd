@@ -1,0 +1,51 @@
+flowchart LR
+
+
+    Frontend["React client<br/>src/Sidebar.tsx"] --> GoMain
+    GoMain["Go HTTP server<br/>go/main.go"] --> RouterGo["Chi router & proxy<br/>go/internal/router/router.go"]
+    RouterGo --> Proxy["Proxy helpers<br/>go/internal/proxy"]
+    RouterGo --> Cache["Response cache<br/>go/internal/cache"]
+    RouterGo --> API["FastAPI routes<br/>python/api.py"]
+
+    subgraph Backend["Python services"]
+        Registry["census_registry<br/>python/census_registry.py"]
+        Loader["data_loader<br/>python/data_loader.py"]
+        Figures["Plotly builders<br/>python/figures.py"]
+        AskSvc["Natural-language Q&A<br/>python/ask.py"]
+        Parser["QueryParser model<br/>python/query_parser.py"]
+        RAG["Semantic search (Chroma)<br/>python/rag.py"]
+        Predictor["Population GP + SHAP<br/>python/prediction.py"]
+        Permits["Permit ingestion<br/>python/permits.py"]
+    end
+
+    subgraph DataPrep["Offline helpers"]
+        Splitter["Large-CSV splitter<br/>python/build_helper/data_split.py"]
+        Tester["GeoJSON spot-check<br/>python/tester2.py"]
+    end
+
+    subgraph Data["Local datasets"]
+        Census["Census CSVs & GeoJSON<br/>data/*"]
+        Pop["Population series cache<br/>load_population_series"]
+        Weights["140↔158 weights parquet"]
+        ChromaDS["ChromaDB embeddings<br/>data/chroma"]
+        PermitsCSV["Permit CSVs 2000–present"]
+        AddrCSV["Address Points - 4326.csv"]
+        SplitCSV["output_folder/split_*.csv"]
+        NeighGeo["neighbourhoods.geojson"]
+    end
+
+    API --> Registry --> Loader
+    API --> Loader --> Census
+    Loader --> Pop
+    API --> Figures
+    API --> AskSvc --> Parser
+    AskSvc --> RAG --> ChromaDS
+    AskSvc --> Weights
+    API --> Predictor --> Pop
+    Predictor --> Loader
+    API --> Permits --> PermitsCSV
+
+    Splitter -->|split & validate| SplitCSV
+    Splitter --> AddrCSV
+    Tester --> NeighGeo
+    Loader --> NeighGeo

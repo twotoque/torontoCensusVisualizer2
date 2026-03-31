@@ -1,0 +1,12 @@
+flowchart LR
+    Start["Request forecast(neighbourhood, years)"] --> PopDF["load_population_series()<br/>python/prediction.py:38"]
+    PopDF --> Resolve["Resolve neighbourhood<br/>(exact or fuzzy match)"]
+    Resolve --> Series["Extract historical years & values"]
+    Series --> FitGP["fit_gp()<br/>GaussianProcessRegressor"]
+    FitGP --> Predict["Predict means/std dev<br/>for historical + forecast years"]
+    Series --> GBMData["Build training rows for all neighbourhoods"]
+    GBMData --> TrainGBM["GradientBoostingRegressor"]
+    TrainGBM --> SHAPCalc["shap.TreeExplainer -> shap_values"]
+    Predict --> Assemble["Assemble JSON: historical, forecast, gp_full"]
+    SHAPCalc --> Assemble
+    Assemble --> Return["Return dict with means, intervals, SHAP feature breakdowns"]
