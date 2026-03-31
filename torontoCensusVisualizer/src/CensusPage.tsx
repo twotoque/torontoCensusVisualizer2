@@ -23,6 +23,7 @@ export interface ChangeRow {
   neighbourhood: string;
   current:       number;
   prev:          number;
+  mapping?:      { name: string; weight: number }[];
 }
 
 export interface BiggestItem {
@@ -272,9 +273,11 @@ interface StatsPanelProps {
   year:       number;
   prevYear:   number;
   row:        number;
+  matchScore: number | null;
+  prevLabel:  string;
 }
 
-export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, year, prevYear, row }) => {
+export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, year, prevYear, row, matchScore, prevLabel }) => {
   const card: React.CSSProperties = {
     background: t.surface, border: `1px solid ${t.border}`,
     borderRadius: 10, padding: 16, boxShadow: t.shadow,
@@ -306,9 +309,41 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
         }
       </div>
 
+
+
       {/* Change table */}
       <div style={card}>
         <div style={cardLabel}>Change by Neighbourhood</div>
+
+        {matchScore !== null && matchScore < 0.7 && (
+          <div style={{
+            fontSize: 11, color: "#e05252", padding: "6px 8px",
+            background: "rgba(224,82,82,0.08)", borderRadius: 6,
+            marginBottom: 8, border: "1px solid rgba(224,82,82,0.2)"
+          }}>
+            ⚠ Low confidence match ({(matchScore * 100).toFixed(0)}%) —{" "}
+            comparing against <em>{prevLabel}</em>
+          </div>
+        )}
+          {prevLabel && (
+            <div style={{
+              fontSize: 11, color: t.textMuted, marginBottom: 10,
+              paddingBottom: 8, borderBottom: `1px solid ${t.border}`,
+              display: "flex", flexDirection: "column", gap: 2,
+            }}>
+              <span style={{ color: t.text, fontWeight: 600 }}>Comparing against {prevYear}:</span>
+              <span style={{ fontStyle: "italic" }}>{prevLabel}</span>
+              {matchScore !== null && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600,
+                  color: matchScore >= 0.7 ? "#22a366" : "#e05252",
+                }}>
+                  {matchScore >= 0.7 ? "✓" : "⚠"} {(matchScore * 100).toFixed(0)}% confidence
+                </span>
+              )}
+            </div>
+          )}
+
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", fontSize: 10, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 0 8px", borderBottom: `1px solid ${t.border}` }}>
           <span>Neighbourhood</span>
           <span>{year}</span>
@@ -317,21 +352,53 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
         {changeData.length === 0
           ? <div style={{ color: t.textMuted, fontSize: 12, paddingTop: 8 }}>{prevYear === year ? "No previous year." : "Loading..."}</div>
           : changeData.map((row, i) => {
-            const pct = row.prev ? (row.current - row.prev) / row.prev * 100 : 0;
-            return (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", padding: "7px 0", borderBottom: `1px solid ${t.border}`, fontSize: 12 }}>
-                <div style={{ fontWeight: 600, color: t.text, fontSize: 12 }}>{row.neighbourhood}</div>
-                <div>
-                  <div style={{ color: t.text }}>{fmt(row.current)}</div>
-                  <div style={{ fontSize: 11, color: pct >= 0 ? "#22a366" : "#e05252", fontWeight: 500 }}>
-                    {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
-                  </div>
-                </div>
-                <div style={{ color: t.textMuted }}>{fmt(row.prev)}</div>
-              </div>
-            );
-          })
-        }
+  const pct = row.prev ? (row.current - row.prev) / row.prev * 100 : 0;
+  return (
+    <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", padding: "7px 0", borderBottom: `1px solid ${t.border}`, fontSize: 12 }}>
+      <div style={{ fontWeight: 600, color: t.text, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+        {row.neighbourhood}
+        {row.mapping && row.mapping.length > 0 && (
+<div style={{ position: "relative", display: "inline-flex" }}
+  onMouseEnter={e => (e.currentTarget.querySelector('.tooltip') as HTMLElement).style.display = 'block'}
+  onMouseLeave={e => (e.currentTarget.querySelector('.tooltip') as HTMLElement).style.display = 'none'}
+>
+  <span style={{
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    width: 14, height: 14, borderRadius: "50%",
+    background: t.surfaceAlt, border: `1px solid ${t.border}`,
+    color: t.textMuted, fontSize: 9, fontWeight: 700,
+    cursor: "help", flexShrink: 0,
+  }}>i</span>
+  <div className="tooltip" style={{
+    display: "none", position: "absolute",
+    bottom: "100%", left: 0, zIndex: 100,
+    background: "#2a2a2a", color: "#eee",
+    borderRadius: 6, padding: "6px 10px",
+    fontSize: 11, whiteSpace: "nowrap",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+    marginBottom: 4, minWidth: 160,
+  }}>
+    {row.mapping.map((m, mi) => (
+      <div key={mi} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <span>{m.name}</span>
+        <span style={{ color: "#aaa" }}>{(m.weight * 100).toFixed(0)}%</span>
+      </div>
+    ))}
+  </div>
+</div>
+        )}
+      </div>
+      <div>
+        <div style={{ color: t.text }}>{fmt(row.current)}</div>
+        <div style={{ fontSize: 11, color: pct >= 0 ? "#22a366" : "#e05252", fontWeight: 500 }}>
+          {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
+        </div>
+      </div>
+      <div style={{ color: t.textMuted }}>{fmt(row.prev)}</div>
+    </div>
+  );
+})
+}
       </div>
 
       {/* Export */}
@@ -367,6 +434,8 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
   const [title, setTitle]     = useState("");
   const [changeData, setChangeData] = useState<ChangeRow[]>([]);
   const [biggest, setBiggest] = useState<BiggestItem[]>([]);
+  const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [prevLabel, setPrevLabel]   = useState<string>("");
 
   // Load years
   useEffect(() => {
@@ -406,6 +475,8 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
     }
 
     if (compareData?.data) {
+      setMatchScore(compareData.match_score ?? null);
+      setPrevLabel(compareData.prev_label ?? "");
       setChangeData(
         Object.entries(compareData.data)
           .map(([n, v]: [string, any]) => ({
@@ -444,7 +515,7 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
       {/* Two-column body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <ChartPanel t={t} mapFig={mapFig} barFig={barFig} loading={loading} year={year} row={row} />
-        <StatsPanel t={t} biggest={biggest} changeData={changeData} year={year} prevYear={prevYear} row={row} />
+        <StatsPanel t={t} biggest={biggest} changeData={changeData} year={year} prevYear={prevYear} row={row} matchScore={matchScore} prevLabel={prevLabel} />
       </div>
 
     </div>

@@ -92,25 +92,39 @@ def compare_years(year: int, row: int, prev_year: int):
         if curr_matches.empty:
             return {"error": "row not found"}
         curr_row = curr_matches.iloc[0]
-        curr_label = curr_row[curr_paths["label_col"]].strip()
     else:
-        curr_row = curr_df.iloc[row]
-        curr_label = curr_row[curr_paths["label_col"]].strip()
+        curr_row = curr_df.iloc[row - 2]
 
-    # Find equivalent row in prev year by label match
-    prev_label_col = prev_paths["label_col"]
-    prev_matches = prev_df[prev_df[prev_label_col].str.strip() == curr_label]
-    if prev_matches.empty:
-        prev_matches = prev_df[prev_df[prev_label_col].str.strip().str.contains(
-            curr_label[:30], case=False, na=False
-        )]
-    if prev_matches.empty:
+    # Build search label: use Combined_Label if available for richer context
+    curr_label = (
+        str(curr_row["Combined_Label"]) if "Combined_Label" in curr_df.columns
+        else str(curr_row[curr_paths["label_col"]]).strip()
+    )
+
+    # RAG: find equivalent row in prev year
+    prev_results = semantic_search(curr_label, year=prev_year, limit=3)
+    if not prev_results:
         return {"error": f"no matching row for '{curr_label}' in {prev_year}"}
-    prev_row = prev_matches.iloc[0]
 
-    # Get neighbourhood columns for current year
+    best        = prev_results[0]
+    prev_id_col = prev_paths.get("id_col")
+    if prev_id_col and prev_id_col in prev_df.columns:
+        prev_matches = prev_df[prev_df[prev_id_col] == best["row_id"]]
+    else:
+        prev_matches = prev_df.iloc[[best["row_id"] - 2]]
+
+    if prev_matches.empty:
+        return {"error": f"row {best['row_id']} not found in {prev_year}"}
+
+    prev_row      = prev_matches.iloc[0]
+    prev_label = (
+        str(prev_row["Combined_Label"]) if "Combined_Label" in prev_df.columns
+        else str(prev_row[prev_paths["label_col"]]).strip()
+    )
+    match_score   = best["score"]
+
     curr_label_col = curr_paths["label_col"]
-    col_start = curr_df.columns.get_loc(curr_label_col)
+    col_start      = curr_df.columns.get_loc(curr_label_col)
     curr_neighbourhoods = list(curr_df.columns[col_start + 1:])
 
     weights_df = pd.read_parquet(
@@ -129,7 +143,7 @@ def compare_years(year: int, row: int, prev_year: int):
         old_names = weights_df[weights_df["AREA_NAME_2"] == col]
 
         if not old_names.empty and year == 2021:
-            # 158 → 140 weighted mapping
+            # 158 → 140 weighted mapping (parquet)
             prev_val     = 0.0
             total_weight = 0.0
             sources      = []
@@ -145,11 +159,11 @@ def compare_years(year: int, row: int, prev_year: int):
                     except (ValueError, TypeError):
                         pass
             if total_weight > 0:
-                result[col] = {"current": curr_val, "prev": prev_val / total_weight}
-                if len(sources) > 1:
+                result[col] = {"current": curr_val, "prev": round(prev_val / total_weight, 2)}
+                if sources:
                     mapping[col] = sources
         else:
-            # Same neighbourhood system — direct lookup
+            # Same 140 neighbourhood system — direct lookup
             if col in prev_df.columns:
                 try:
                     prev_val = float(str(prev_row[col]).replace(",", "").replace("%", ""))
@@ -158,12 +172,13 @@ def compare_years(year: int, row: int, prev_year: int):
                     pass
 
     return {
-        "curr_label": curr_label,
-        "prev_label": prev_row[prev_label_col].strip(),
-        "year":       year,
-        "prev_year":  prev_year,
-        "data":       result,
-        "mapping":    mapping,
+        "curr_label":   curr_label,
+        "prev_label":   prev_label,
+        "match_score":  round(match_score, 3),  # so frontend can warn if low confidence
+        "year":         year,
+        "prev_year":    prev_year,
+        "data":         result,
+        "mapping":      mapping,
     }
 
 @app.get("/years")
