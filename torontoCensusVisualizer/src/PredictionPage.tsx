@@ -26,6 +26,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
   const [results, setResults]                 = useState<Record<string, ForecastResult>>({});
   const [loading, setLoading]                 = useState(false);
   const [forecastYears, setForecastYears]     = useState([2026, 2031]);
+  const [shapNeigh, setShapNeigh] = useState<string | null>(null);
 
   const card: React.CSSProperties = {
     background: t.surface, border: `1px solid ${t.border}`,
@@ -43,6 +44,13 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
     setSlot(null);
     return () => setSlot(null);
   }, []);
+
+  useEffect(() => {
+    if (results && selected.length > 0 && !shapNeigh) {
+        setShapNeigh(selected[0]);
+    }
+    }, [results]);
+
 
   async function runForecast() {
     if (!selected.length) return;
@@ -102,12 +110,14 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
   });
 
   // SHAP bar for first selected neighbourhood
-  const shap = selected[0] && results[selected[0]]?.shap;
-  const shapTraces: any[] = shap ? shap.features.map(f => ({
+    const activeShapNeigh = shapNeigh ?? selected[0];
+    const shap = activeShapNeigh && results[activeShapNeigh]?.shap;
+    const shapTraces: any[] = shap ? shap.features.map(f => ({
     x: shap.years,
     y: shap.values.map(v => v[f]),
     type: "bar", name: f,
-  })) : [];
+    })) : [];
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: t.bg, overflow: "hidden" }}>
@@ -281,27 +291,42 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
           {/* SHAP explanation */}
           {shapTraces.length > 0 && (
             <div style={card}>
-              <div style={cardLabel}>SHAP Feature Importance — {selected[0]}</div>
-              <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={cardLabel}>SHAP Feature Importance</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                    {selected.filter(n => results[n]?.shap).map((n, i) => (
+                    <button
+                        key={n}
+                        onClick={() => setShapNeigh(n)}
+                        style={{
+                        padding: "3px 8px", borderRadius: 5, border: "none", fontSize: 10,
+                        background: activeShapNeigh === n ? COLORS[i % COLORS.length] : t.surfaceAlt,
+                        color: activeShapNeigh === n ? "#fff" : t.textMuted,
+                        cursor: "pointer",
+                        }}
+                    >{n}</button>
+                    ))}
+                </div>
+                </div>
+                <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 8 }}>
                 How much each feature contributed to the population prediction at each census year
-              </div>
-              <Plot
+                </div>
+                <Plot
                 data={shapTraces}
                 layout={{
-                  barmode: "relative",
-                  autosize: true,
-                  paper_bgcolor: "transparent", plot_bgcolor: "transparent",
-                  margin: { t: 10, b: 40, l: 50, r: 10 },
-                  xaxis: { title: "Year", color: t.textMuted, gridcolor: t.border },
-                  yaxis: { title: "SHAP value", color: t.textMuted, gridcolor: t.border },
-                  legend: { font: { color: t.text }, bgcolor: "transparent" },
-                  font: { family: "proxima-nova, sans-serif", color: t.text },
+                    barmode: "relative", autosize: true,
+                    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+                    margin: { t: 10, b: 40, l: 50, r: 10 },
+                    xaxis: { title: "Year", color: t.textMuted, gridcolor: t.border },
+                    yaxis: { title: "SHAP value", color: t.textMuted, gridcolor: t.border },
+                    legend: { font: { color: t.text }, bgcolor: "transparent" },
+                    font: { family: "proxima-nova, sans-serif", color: t.text },
                 }}
                 style={{ width: "100%", height: 260 }}
                 useResizeHandler
-              />
+                />
             </div>
-          )}
+            )}
         </div>
       </div>
     </div>
