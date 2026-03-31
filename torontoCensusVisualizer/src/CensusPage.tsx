@@ -131,7 +131,7 @@ export const CensusSearch: React.FC<CensusSearchProps> = ({ t, year, onSelect })
       
       <li
         key={sg.row_id}
-        onClick={() => { onSelect(sg.row_id); setInput(""); setSuggestions([]); }}
+        onClick={() => { onSelect(sg.row_id); setInput(sg.label); setSuggestions([]); }}
         style={{
           padding: "8px 12px", cursor: "pointer", fontSize: 13,
           borderBottom: `1px solid ${t.border}`, color: t.text,

@@ -109,7 +109,7 @@ for year, config in CENSUS_YEARS.items():
         metadatas.append({
             "year":   year,
             "row_id": row_id,
-            "label":  label,
+            "label":  str(row["Combined_Label"]) if "Combined_Label" in df.columns else label,
         })
 
     # Batch upsert for efficiency

@@ -255,15 +255,22 @@ def search_rows(
     if id_col and id_col in census_df.columns and query.isdigit():
         mask = census_df[id_col].astype(str) == query
     else:
-        mask = census_df[label_col].str.contains(query, case=False, regex=False, na=False)
+        search_col = "Combined_Label" if "Combined_Label" in census_df.columns else label_col
+        mask = census_df[search_col].str.contains(query, case=False, regex=False, na=False)
 
     matched = census_df[mask].head(limit)
 
     use_id = id_col and id_col in census_df.columns
+
+    def get_label(row):
+        if "Combined_Label" in census_df.columns:
+            return str(row["Combined_Label"])
+        return str(row[label_col])
+
     return [
         {
             "row":   int(row[id_col]) if use_id else int(idx) + 2,
-            "label": str(row[label_col]),
+            "label": get_label(row),
         }
         for idx, row in matched.iterrows()
     ]
