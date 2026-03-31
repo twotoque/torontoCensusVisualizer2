@@ -278,6 +278,23 @@ interface StatsPanelProps {
 }
 
 export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, year, prevYear, row, matchScore, prevLabel }) => {
+  const [sortBy, setSortBy] = useState<"alpha" | "highest" | "lowest" | "changeHigh" | "changeLow">("changeHigh");
+  const [neighSearch, setNeighSearch] = useState("");
+
+
+  const sortedChangeData = [...changeData]
+    .filter(r => r.neighbourhood.toLowerCase().includes(neighSearch.toLowerCase()))
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "alpha":      return a.neighbourhood.localeCompare(b.neighbourhood);
+        case "highest":    return b.current - a.current;
+        case "lowest":     return a.current - b.current;
+        case "changeHigh": return Math.abs(b.current - b.prev) - Math.abs(a.current - a.prev);
+        case "changeLow":  return Math.abs(a.current - a.prev) - Math.abs(b.current - b.prev);
+        default:           return 0;
+      }
+    });
+
   const card: React.CSSProperties = {
     background: t.surface, border: `1px solid ${t.border}`,
     borderRadius: 10, padding: 16, boxShadow: t.shadow,
@@ -291,6 +308,10 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
     background: t.accent, color: "#fff", cursor: "pointer",
     fontSize: 13, fontWeight: 500,
   };
+
+
+  const [showLimit, setShowLimit] = useState(10);
+  const visibleData = sortedChangeData.slice(0, showLimit);
 
   return (
     <div style={{ flex: "0 0 40%", overflowY: "auto", padding: "16px 16px 16px 8px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -312,95 +333,147 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
 
 
       {/* Change table */}
-      <div style={card}>
-        <div style={cardLabel}>Change by Neighbourhood</div>
+<div style={card}>
+  <div style={cardLabel}>Change by Neighbourhood</div>
 
-        {matchScore !== null && matchScore < 0.7 && (
-          <div style={{
-            fontSize: 11, color: "#e05252", padding: "6px 8px",
-            background: "rgba(224,82,82,0.08)", borderRadius: 6,
-            marginBottom: 8, border: "1px solid rgba(224,82,82,0.2)"
-          }}>
-            ⚠ Low confidence match ({(matchScore * 100).toFixed(0)}%) —{" "}
-            comparing against <em>{prevLabel}</em>
-          </div>
-        )}
-          {prevLabel && (
-            <div style={{
-              fontSize: 11, color: t.textMuted, marginBottom: 10,
-              paddingBottom: 8, borderBottom: `1px solid ${t.border}`,
-              display: "flex", flexDirection: "column", gap: 2,
-            }}>
-              <span style={{ color: t.text, fontWeight: 600 }}>Comparing against {prevYear}:</span>
-              <span style={{ fontStyle: "italic" }}>{prevLabel}</span>
-              {matchScore !== null && (
-                <span style={{
-                  fontSize: 10, fontWeight: 600,
-                  color: matchScore >= 0.7 ? "#22a366" : "#e05252",
-                }}>
-                  {matchScore >= 0.7 ? "✓" : "⚠"} {(matchScore * 100).toFixed(0)}% confidence
-                </span>
+  {prevLabel && (
+    <div style={{
+      fontSize: 11, color: t.textMuted, marginBottom: 10,
+      paddingBottom: 8, borderBottom: `1px solid ${t.border}`,
+      display: "flex", flexDirection: "column", gap: 2,
+    }}>
+      <span style={{ color: t.text, fontWeight: 600 }}>Comparing against {prevYear}:</span>
+      <span style={{ fontStyle: "italic" }}>{prevLabel}</span>
+      {matchScore !== null && (
+        <span style={{
+          fontSize: 10, fontWeight: 600,
+          color: matchScore >= 0.7 ? "#22a366" : "#e05252",
+        }}>
+          {matchScore >= 0.7 ? "✓" : "⚠"} {(matchScore * 100).toFixed(0)}% confidence
+        </span>
+      )}
+    </div>
+  )}
+
+  {/* Controls */}
+  <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+    <input
+      value={neighSearch}
+      onChange={e => setNeighSearch(e.target.value)}
+      placeholder="Search neighbourhood..."
+      style={{
+        flex: 1, minWidth: 120, padding: "4px 8px", borderRadius: 6,
+        border: `1px solid ${t.border}`, background: t.surfaceAlt,
+        color: t.text, fontSize: 11, outline: "none", fontFamily: "inherit",
+      }}
+    />
+    <select
+      value={sortBy}
+      onChange={e => setSortBy(e.target.value as any)}
+      style={{
+        padding: "4px 8px", borderRadius: 6,
+        border: `1px solid ${t.border}`, background: t.surfaceAlt,
+        color: t.text, fontSize: 11, outline: "none",
+        fontFamily: "inherit", cursor: "pointer",
+      }}
+    >
+      <option value="changeHigh">Biggest change</option>
+      <option value="changeLow">Smallest change</option>
+      <option value="highest">Highest value</option>
+      <option value="lowest">Lowest value</option>
+      <option value="alpha">A → Z</option>
+    </select>
+  </div>
+
+  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", fontSize: 10, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 0 8px", borderBottom: `1px solid ${t.border}` }}>
+    <span>Neighbourhood</span>
+    <span>{year}</span>
+    <span>{prevYear}</span>
+  </div>
+
+{sortedChangeData.length === 0
+  ? <div style={{ color: t.textMuted, fontSize: 12, paddingTop: 8 }}>
+      {prevYear === year ? "No previous year." : neighSearch ? "No matches." : "Loading..."}
+    </div>
+  : <>
+      {sortedChangeData.slice(0, showLimit).map((row, i) => {
+        const pct = row.prev ? (row.current - row.prev) / row.prev * 100 : 0;
+        return (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", padding: "7px 0", borderBottom: `1px solid ${t.border}`, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, color: t.text, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+              {row.neighbourhood}
+              {row.mapping && row.mapping.length > 0 && (
+                <div style={{ position: "relative", display: "inline-flex" }}
+                  onMouseEnter={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'block'}
+                  onMouseLeave={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'none'}
+                >
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 14, height: 14, borderRadius: "50%",
+                    background: t.surfaceAlt, border: `1px solid ${t.border}`,
+                    color: t.textMuted, fontSize: 9, fontWeight: 700,
+                    cursor: "help", flexShrink: 0,
+                  }}>i</span>
+                  <div className="tip" style={{
+                    display: "none", position: "absolute",
+                    bottom: "calc(100% + 4px)", left: 0, zIndex: 100,
+                    background: "#2a2a2a", color: "#eee",
+                    borderRadius: 6, padding: "6px 10px",
+                    fontSize: 11, whiteSpace: "nowrap",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                    minWidth: 180,
+                  }}>
+                    <div style={{ color: "#888", fontSize: 10, marginBottom: 4 }}>2016 sources</div>
+                    {row.mapping.map((m, mi) => (
+                      <div key={mi} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+                        <span>{m.name}</span>
+                        <span style={{ color: "#aaa" }}>{(m.weight * 100).toFixed(0)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          )}
+            <div>
+              <div style={{ color: t.text }}>{fmt(row.current)}</div>
+              <div style={{ fontSize: 11, color: pct >= 0 ? "#22a366" : "#e05252", fontWeight: 500 }}>
+                {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
+              </div>
+            </div>
+            <div style={{ color: t.textMuted }}>{fmt(row.prev)}</div>
+          </div>
+        );
+      })}
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", fontSize: 10, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 0 8px", borderBottom: `1px solid ${t.border}` }}>
-          <span>Neighbourhood</span>
-          <span>{year}</span>
-          <span>{prevYear}</span>
-        </div>
-        {changeData.length === 0
-          ? <div style={{ color: t.textMuted, fontSize: 12, paddingTop: 8 }}>{prevYear === year ? "No previous year." : "Loading..."}</div>
-          : changeData.map((row, i) => {
-  const pct = row.prev ? (row.current - row.prev) / row.prev * 100 : 0;
-  return (
-    <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", padding: "7px 0", borderBottom: `1px solid ${t.border}`, fontSize: 12 }}>
-      <div style={{ fontWeight: 600, color: t.text, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-        {row.neighbourhood}
-        {row.mapping && row.mapping.length > 0 && (
-  <div style={{ position: "relative", display: "inline-flex" }}
-    onMouseEnter={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'block'}
-    onMouseLeave={e => (e.currentTarget.querySelector('.tip') as HTMLElement).style.display = 'none'}
-  >
-    <span style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      width: 14, height: 14, borderRadius: "50%",
-      background: t.surfaceAlt, border: `1px solid ${t.border}`,
-      color: t.textMuted, fontSize: 9, fontWeight: 700,
-      cursor: "help", flexShrink: 0,
-    }}>i</span>
-    <div className="tip" style={{
-      display: "none", position: "absolute",
-      bottom: "calc(100% + 4px)", left: 0, zIndex: 100,
-      background: "#2a2a2a", color: "#eee",
-      borderRadius: 6, padding: "6px 10px",
-      fontSize: 11, whiteSpace: "nowrap",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-      minWidth: 180,
-    }}>
-      <div style={{ color: "#888", fontSize: 10, marginBottom: 4 }}>2016 sources</div>
-      {row.mapping.map((m, mi) => (
-        <div key={mi} style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-          <span>{m.name}</span>
-          <span style={{ color: "#aaa" }}>{(m.weight * 100).toFixed(0)}%</span>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-      </div>
-      <div>
-        <div style={{ color: t.text }}>{fmt(row.current)}</div>
-        <div style={{ fontSize: 11, color: pct >= 0 ? "#22a366" : "#e05252", fontWeight: 500 }}>
-          {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
-        </div>
-      </div>
-      <div style={{ color: t.textMuted }}>{fmt(row.prev)}</div>
-    </div>
-  );
-})
+      {sortedChangeData.length > showLimit && (
+        <button
+          onClick={() => setShowLimit(prev => prev + 10)}
+          style={{
+            width: "100%", marginTop: 8, padding: "6px 0",
+            borderRadius: 6, border: `1px solid ${t.border}`,
+            background: "transparent", color: t.textMuted,
+            fontSize: 11, cursor: "pointer", fontFamily: "inherit",
+          }}
+        >
+          Show more ({sortedChangeData.length - showLimit} remaining)
+        </button>
+      )}
+      {showLimit > 10 && (
+        <button
+          onClick={() => setShowLimit(10)}
+          style={{
+            width: "100%", marginTop: 4, padding: "6px 0",
+            borderRadius: 6, border: "none",
+            background: "transparent", color: t.textMuted,
+            fontSize: 11, cursor: "pointer", fontFamily: "inherit",
+          }}
+        >
+          Show less
+        </button>
+      )}
+    </>
 }
-      </div>
+</div>
 
       {/* Export */}
       <div style={card}>
@@ -486,10 +559,9 @@ export const CensusPage: React.FC<CensusPageProps> = ({ t }) => {
             prev:          v.prev,
             mapping:       compareData.mapping?.[n] ?? undefined,
           }))
-          .filter(r => r.current && r.prev)
           .sort((a, b) => Math.abs(b.current - b.prev) - Math.abs(a.current - a.prev))
-          .slice(0, 8)
       );
+
     }
   }).finally(() => setLoading(false));
 }, [year, row]);
