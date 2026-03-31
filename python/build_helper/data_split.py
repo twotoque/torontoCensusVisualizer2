@@ -64,7 +64,7 @@ def validate_split(original_path, output_dir):
         diff = abs(original_row_count - total_split_rows)
         print(f"Error! Row mismatch. Difference: {diff} rows.")
 
-input_csv = '/Users/dereksong/Documents/torontoCensusVisualizer2/python/build_helper/Cleared Building Permits since 2017 (1).csv'
+input_csv = '/Users/dereksong/Documents/torontoCensusVisualizer2/python/build_helper/Address Points - 4326.csv'
 output_folder = './output_folder'
 
 split_csv(input_csv, output_folder)
