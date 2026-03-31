@@ -13,6 +13,9 @@ from figures import build_bar, build_map, build_stack, export_pdf, search_rows
 from rag import semantic_search
 from ask import answer as ask_answer
 import math
+
+from functools import lru_cache
+
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
 
 class StackRequest(BaseModel):
@@ -73,12 +76,14 @@ def resolve_row(census_df: pd.DataFrame, row: int, id_col: str | None = None) ->
         return int(matches.index[0])
     return row - 2  # 2021 convention
 
+@lru_cache(maxsize=1)
+def _load_weights() -> pd.DataFrame:
+    return pd.read_parquet(
+        "/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet"
+    )
+
 @app.get("/census/{year}/row/{row}/compare/{prev_year}")
 def compare_years(year: int, row: int, prev_year: int):
-    """
-    Returns {neighbourhood: {current: value, prev: value}} 
-    for a given row across two years, with neighbourhood alignment.
-    """
     curr_paths = get_paths(year)
     prev_paths = get_paths(prev_year)
 
@@ -127,9 +132,7 @@ def compare_years(year: int, row: int, prev_year: int):
     col_start      = curr_df.columns.get_loc(curr_label_col)
     curr_neighbourhoods = list(curr_df.columns[col_start + 1:])
 
-    weights_df = pd.read_parquet(
-        "/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet"
-    )
+    weights_df = _load_weights()
 
     result  = {}
     mapping = {}
@@ -159,8 +162,8 @@ def compare_years(year: int, row: int, prev_year: int):
                     except (ValueError, TypeError):
                         pass
             if total_weight > 0:
-                result[col] = {"current": curr_val, "prev": round(prev_val / total_weight, 2)}
-                if sources:
+                result[col] = {"current": curr_val, "prev": round(prev_val, 2)}
+                if sources and (len(sources) > 1 or sources[0]["weight"] < 0.99):
                     mapping[col] = sources
         else:
             # Same 140 neighbourhood system — direct lookup
