@@ -308,8 +308,7 @@ def train(model, loader, optimizer, device, epochs=20):
 # save model
 
 def save(model, tokenizer, neighbourhoods, metrics):
-    # saves tokenizer and encoder config
-    model.encoder.config.save_pretrained(str(OUT_DIR))
+    model.encoder.save_pretrained(str(OUT_DIR))  # ← saves full encoder weights, not just config
     tokenizer.save_pretrained(str(OUT_DIR))
 
     heads_only = {
@@ -323,14 +322,14 @@ def save(model, tokenizer, neighbourhoods, metrics):
         "ner_labels":     NER_LABELS,
         "neighbourhoods": neighbourhoods,
         "n_metrics":      len(metrics),
-        "encoder":        "distilbert-base-uncased", 
+        "encoder":        "distilbert-base-uncased",
     }
     with open(OUT_DIR / "meta.json", "w") as f:
         json.dump(meta, f, indent=2)
 
-    print(f"Saved heads to {OUT_DIR / 'query_parser.pt'}")
-    print(f"Size: {(OUT_DIR / 'query_parser.pt').stat().st_size / 1e6:.1f}MB")
-
+    print(f"Saved to {OUT_DIR}")
+    print(f"Heads size: {(OUT_DIR / 'query_parser.pt').stat().st_size / 1e6:.1f}MB")
+    
 #main fn
 
 def main():
