@@ -311,7 +311,6 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ t, biggest, changeData, 
 
 
   const [showLimit, setShowLimit] = useState(10);
-  const visibleData = sortedChangeData.slice(0, showLimit);
 
   return (
     <div style={{ flex: "0 0 40%", overflowY: "auto", padding: "16px 16px 16px 8px", display: "flex", flexDirection: "column", gap: 12 }}>
