@@ -18,6 +18,13 @@ def get_label_depth(label: str) -> int:
 
 @lru_cache(maxsize=16)
 def load_census(path: str, drop_cols: tuple[str, ...] = ()) -> pd.DataFrame:
+    """
+    Load and cache a census CSV file as a DataFrame, optionally dropping columns.
+
+    Results are memoized per (path, drop_cols) via functools.lru_cache. Any column
+    names listed in drop_cols that are present in the CSV are removed before the
+    cleaned DataFrame is returned.
+    """
     df = pd.read_csv(path)
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
