@@ -67,6 +67,42 @@ def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
         "residential_permits": 0.0, "demolition_permits": 0.0,
     }
 
+def fit_gp_da(years, values, neighbourhood_name):
+    """
+    Enhanced GP fitting using DA-interpolated ground truth and permit trends.
+    Uses the da_to_neighbourhood_mapping to validate the 2021 anchor.
+    """
+    da_map = pd.read_parquet(r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\weights\da_to_neighbourhood_mapping.parquet')
+    permit_data = pd.read_parquet(r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\weights\permit_to_neighbourhood.parquet')
+    
+    X = years.reshape(-1, 1).astype(float)
+    y = values.astype(float)
+    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
+
+    # if the neighbourhood exists in our DA mapping, 
+    # we treat the 2021 data point as high-confidence (low alpha).
+    # historial points (pre-2021) get slightly higher alpha to allow for trend smoothing.
+    is_in_da_map = neighbourhood_name in da_map['AREA_NAME'].unique()
+    
+    if is_in_da_map:
+        # High confidence in 2021 (DA-derived), moderate confidence in historical
+        alpha = np.where(years == 2021, 1e-6, 0.1) 
+    else:
+        # Standard noise for stable areas
+        alpha = 1e-10
+
+    kernel = RBF(length_scale=0.5, length_scale_bounds=(0.1, 10)) \
+           + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 0.5))
+
+    gp = GaussianProcessRegressor(
+        kernel=kernel, 
+        alpha=alpha, 
+        n_restarts_optimizer=10, 
+        normalize_y=True
+    )
+    
+    gp.fit(X_norm, y)
+    return gp, X.min(), X.max()
 
 def fit_gp_per_sample(years, values, is_stable=True):
     """Fit a Gaussian Process to (years, population) data."""
