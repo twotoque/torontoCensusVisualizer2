@@ -17,6 +17,11 @@ from pathlib import Path
 
 CROSSWALK_PATH = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
 
+da_map = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/da_to_neighbourhood_mapping 2.parquet')
+old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
+
+SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
+
 def normalize_neighbourhood(name: str) -> str:
     return name  
 
@@ -66,43 +71,50 @@ def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
         "net_units": 0.0, "total_cost": 0.0,
         "residential_permits": 0.0, "demolition_permits": 0.0,
     }
+def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
+    from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
+    from sklearn.preprocessing import StandardScaler
 
-def fit_gp_da(years, values, neighbourhood_name):
-    """
-    Enhanced GP fitting using DA-interpolated ground truth and permit trends.
-    Uses the da_to_neighbourhood_mapping to validate the 2021 anchor.
-    """
-    da_map = pd.read_parquet(r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\weights\da_to_neighbourhood_mapping.parquet')
-    permit_data = pd.read_parquet(r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\weights\permit_to_neighbourhood.parquet')
-    
+    # 2021 anchor explicitly as a training point with high trust
+    if true_2021_value is not None:
+        years  = np.append(years, 2021.0)
+        values = np.append(values, float(true_2021_value))
+
     X = years.reshape(-1, 1).astype(float)
     y = values.astype(float)
-    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
 
-    # if the neighbourhood exists in our DA mapping, 
-    # we treat the 2021 data point as high-confidence (low alpha).
-    # historial points (pre-2021) get slightly higher alpha to allow for trend smoothing.
-    is_in_da_map = neighbourhood_name in da_map['AREA_NAME'].unique()
-    
-    if is_in_da_map:
-        # High confidence in 2021 (DA-derived), moderate confidence in historical
-        alpha = np.where(years == 2021, 1e-6, 0.1) 
+    # normalize  X to [0, 1]
+    x_min, x_max = X.min(), X.max()
+    X_norm = (X - x_min) / (x_max - x_min + 1e-8)
+
+    # scale y (fixes the kernel bound explosions)
+    y_scaler = StandardScaler()
+    y_scaled = y_scaler.fit_transform(y.reshape(-1, 1)).ravel()
+
+    is_split = neighbourhood_name in SPLIT_NEIGHBOURHOOD_LIST
+
+    # Per-point noise: trust the 2021 anchor fully, be looser on synthetic pre-2021 points
+    if true_2021_value is not None:
+        alpha = np.where(years == 2021, 1e-6, 0.5 if is_split else 0.05)
     else:
-        # Standard noise for stable areas
-        alpha = 1e-10
+        alpha = 0.5 if is_split else 0.05
 
-    kernel = RBF(length_scale=0.5, length_scale_bounds=(0.1, 10)) \
-           + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 0.5))
+    # Fix length_scale: with only 4-5 census points, learning it causes overfitting
+    kernel = (
+        C(1.0, (1e-3, 1e6))
+        * RBF(length_scale=0.5, length_scale_bounds="fixed")
+        + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+    )
 
     gp = GaussianProcessRegressor(
-        kernel=kernel, 
-        alpha=alpha, 
-        n_restarts_optimizer=10, 
-        normalize_y=True
+        kernel=kernel,
+        alpha=alpha,
+        n_restarts_optimizer=5,
+        normalize_y=False,   # we're scaling manually so y_scaled is already centred
     )
-    
-    gp.fit(X_norm, y)
-    return gp, X.min(), X.max()
+    gp.fit(X_norm, y_scaled)
+
+    return gp, x_min, x_max, y_scaler        
 
 def fit_gp_per_sample(years, values, is_stable=True):
     """Fit a Gaussian Process to (years, population) data."""
