@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from census_registry import available_years, get_paths
 from data_loader import load_census, load_geo, load_population_series
 from figures import build_bar, build_map, build_stack, export_pdf, search_rows
-from rag import semantic_search
+from rag import semantic_search, find_row_in_year
 from ask import answer as ask_answer
 import math
 
@@ -85,6 +85,9 @@ def _load_weights() -> pd.DataFrame:
         "/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet"
     )
 
+
+
+
 @app.get("/census/{year}/row/{row}/compare/{prev_year}")
 def compare_years(year: int, row: int, prev_year: int):
     curr_paths = get_paths(year)
@@ -129,7 +132,9 @@ def compare_years(year: int, row: int, prev_year: int):
         str(prev_row["Combined_Label"]) if "Combined_Label" in prev_df.columns
         else str(prev_row[prev_paths["label_col"]]).strip()
     )
-    match_score   = best["score"]
+    prev_row_id, match_score = find_row_in_year(curr_label, prev_year)
+    if prev_row_id is None:
+        return {"error": f"no matching row for '{curr_label}' in {prev_year}"}
 
     curr_label_col = curr_paths["label_col"]
     col_start      = curr_df.columns.get_loc(curr_label_col)

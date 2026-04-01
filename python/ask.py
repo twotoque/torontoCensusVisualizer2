@@ -10,7 +10,7 @@
 import re
 
 from query_parser import parse
-from rag import semantic_search, semantic_search_with_disambiguation
+from rag import semantic_search, semantic_search_with_disambiguation, find_row_in_year
 from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
 import pandas as pd
@@ -42,6 +42,7 @@ STOP_WORDS = [
     r"\bthe\b", r"\band\b", r"\bin\b", r"\bto\b", r"\bof\b",
 ]
 
+    
 def _fetch_values(
     row_ids: dict,     
     neighbourhoods: list[str],
@@ -292,10 +293,54 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     neighbourhoods = parsed["neighbourhoods"]
     years          = parsed["years"]
 
-    # 2. RAG — skip if user already confirmed a row
+    # 2. if it is a trend, do a special multi-year search and answer generation flow
+    if intent == "trend":
+        search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
+        anchor_year = max(years)
+        
+        anchor_results = semantic_search(search_query, year=anchor_year, limit=10)
+        anchor_results = [r for r in anchor_results if r["label"].strip() not in BLOCKED_LABELS]
+        
+        if anchor_results:
+            anchor_row = anchor_results[0]
+            anchor_label = anchor_row["label"]
+            row_ids = {anchor_year: anchor_row["row_id"]}
+            
+            for y in sorted(years):
+                if y == anchor_year:
+                    continue
+                row_id, score = find_row_in_year(anchor_label, y)
+                if row_id is not None and score > 0.3:
+                    row_ids[y] = row_id
+            
+            if row_ids:
+                display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_label).strip()
+                display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
+                
+                values = _fetch_values(row_ids, neighbourhoods)
+                
+                import math
+                for y in list(values.keys()):
+                    for n in list(values[y].keys()):
+                        if isinstance(values[y][n], float) and math.isnan(values[y][n]):
+                            del values[y][n]
+                    if not values[y]:
+                        del values[y]
+                
+                answer_text = _template_trend(values, neighbourhoods,
+                                            sorted(values.keys()), display_metric)
+                return {
+                    "answer":         answer_text,
+                    "intent":         intent,
+                    "metric":         display_metric,
+                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
+                                    "values": values},
+                    "disambiguation": None,
+                }
+            
+    # 3. RAG — skip if user already confirmed a row
     if confirmed_row_id is not None and confirmed_year is not None:
-        row_ids        = {confirmed_year: confirmed_row_id}
-        years          = [confirmed_year]  # use confirmed year only
+        row_ids = {year: confirmed_row_id for year in years}  # use same row across all years
         
         confirmed_results = semantic_search(query, year=confirmed_year, limit=1)
         display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
@@ -334,7 +379,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         )
         display_metric = year_results[0]["label"].strip() if year_results else results[0]["label"]
 
-    # 3. Fetch values
+    # 4. Fetch values
     if intent == "ranking":
         year = years[0]
         rid  = row_ids.get(year)
@@ -354,7 +399,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
             }
         values = _fetch_values(row_ids, neighbourhoods)
 
-    # 4. Generate answer from template
+    # 5. Generate answer from template
     template_fn = TEMPLATE_FNS.get(intent, _template_single_value)
     answer_text = template_fn(values, neighbourhoods, years, display_metric)
 
