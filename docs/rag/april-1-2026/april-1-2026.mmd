@@ -1,0 +1,20 @@
+flowchart TD
+    Start["Start ask.answer"] --> Clean["_clean_query_for_rag<br/>python/ask.py:102-118"]
+    Clean --> ParseIntent["parse()<br/>python/query_parser.py"]
+    ParseIntent --> Entities{"Have neighbourhoods?"}
+    Entities -- "No" --> Error["Return “include a Toronto neighbourhood”"]
+    Entities -- "Yes" --> Confirm{"User confirmed row/year?"}
+    Confirm -- "Yes" --> Seed["Seed row_ids with confirmed pair"]
+    Confirm -- "No" --> RAGCall["semantic_search_with_disambiguation<br/>python/rag.py"]
+    Seed --> Remaining["_get_row_ids for remaining years"]
+    Remaining --> RAGMerge["Merge confirmed + additional row_ids"]
+    RAGCall -->|"needs clarification"| Disambig["List options to user"]
+    RAGCall -->|"single best"| RowIDs["_get_row_ids per year<br/>python/ask.py:121-142"]
+    RAGMerge --> RowIDs
+    RowIDs --> Values{"Intent == “ranking”?"}
+    Values -- "Yes" --> FetchAll["_fetch_all_neighbourhoods_for_year"]
+    Values -- "No" --> FetchSome["_fetch_values<br/>load_census + weights parquet"]
+    FetchAll --> Template["Choose template<br/>TEMPLATE_FNS"]
+    FetchSome --> Template
+    Template --> Answer["Return answer/context JSON"]
+
