@@ -157,7 +157,7 @@ export const MessageList: React.FC<MessageListProps> = ({ t, messages, loading, 
           </div>
           <div>Ask about population, income, housing and more across Toronto neighbourhoods.</div>
           <div style={{ marginTop: 8, fontSize: 12 }}>
-            e.g. "What was the population of Annex in 2011?"
+            e.g. "What was the population of York University Heights in 2011?"
           </div>
         </div>
       )}

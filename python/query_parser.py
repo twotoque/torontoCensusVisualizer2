@@ -12,7 +12,16 @@ import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
 
-MODEL_DIR = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/python/models/query_parser")
+from huggingface_hub import snapshot_download
+import os
+
+MODEL_DIR = Path("python/models/query_parser")
+
+if not MODEL_DIR.exists() or not any(MODEL_DIR.iterdir()):
+    snapshot_download(
+        repo_id="twotoque/query-parser",
+        local_dir=str(MODEL_DIR)
+    )
 VALID_YEARS = [2001, 2006, 2011, 2016, 2021]
 
 

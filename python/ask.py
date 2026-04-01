@@ -7,10 +7,11 @@
 #
 # Everything is localish 
 
+import math
 import re
 
 from query_parser import parse
-from rag import semantic_search, semantic_search_with_disambiguation
+from rag import semantic_search, semantic_search_with_disambiguation, find_row_in_year
 from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
 import pandas as pd
@@ -20,7 +21,7 @@ weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer
 
 # training wheels for the RAG
 ENRICHMENTS = {
-    "population":        "total population count",
+    "population":        "population",
     "income":            "average total income",
     "household income":  "average household total income",
     "housing":           "dwelling units",
@@ -41,6 +42,22 @@ STOP_WORDS = [
     "from", "how has", "historical", "trend",
     r"\bthe\b", r"\band\b", r"\bin\b", r"\bto\b", r"\bof\b",
 ]
+
+ATTRIBUTE_MAP = {
+    "population": {
+        2001: "Population, 2001 - 100% data",
+        2006: "Population, 2006 - 100% data",
+        2011: "Population, 2011",
+        2016: "Population, 2016",
+        2021: "Total - Age groups of the population - 25% sample data",
+    }
+}
+
+def get_attribute(field: str, year: int) -> str:
+    """Return the correct CSV attribute name for a given field and year."""
+    if field in ATTRIBUTE_MAP:
+        return ATTRIBUTE_MAP[field].get(year, field)
+    return field
 
 def _fetch_values(
     row_ids: dict,     
@@ -83,6 +100,36 @@ def _fetch_values(
 
     return result
 
+def _drop_nan_values(values: dict) -> None:
+    """Remove NaN entries from a {year: {neighbourhood: value}} dict in-place."""
+    for y in list(values.keys()):
+        for n in list(values[y].keys()):
+            if isinstance(values[y][n], float) and math.isnan(values[y][n]):
+                del values[y][n]
+        if not values[y]:
+            del values[y]
+
+def _get_label_for_row(row_id: int, year: int) -> str | None:
+    """Return the descriptive label for a given row/year."""
+    paths = get_paths(year)
+    df    = load_census(paths["census"], drop_cols=tuple(paths.get("drop_cols", ())))
+    id_col    = paths.get("id_col")
+    label_col = paths["label_col"]
+
+    if id_col and id_col in df.columns:
+        matches = df[df[id_col] == row_id]
+        if matches.empty:
+            return None
+        row = matches.iloc[0]
+    else:
+        if row_id >= len(df):
+            return None
+        row = df.iloc[row_id]
+
+    if "Combined_Label" in df.columns and pd.notna(row.get("Combined_Label")):
+        return str(row["Combined_Label"])
+    return str(row[label_col])
+
 def _resolve_neighbourhood(name: str, weights_df: pd.DataFrame, year: int) -> dict:
     """
     For years using 158-neighbourhood system (2021), map old names to new via weights.
@@ -123,8 +170,11 @@ def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dic
     for year in years:
         search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
         # append year to help find year-specific rows like "Population, 2011"
-        if search_query and str(year) not in search_query:
-            search_query = f"{search_query} {year}"
+        if search_query:
+            if year == 2021 and "population" in search_query.lower():
+                search_query = "Total - Age groups of the population - 25% sample data"
+            elif str(year) not in search_query:
+                search_query = f"{search_query} {year}"
 
         results = semantic_search(search_query, year=year, limit=5)
         results = [r for r in results if r["label"].strip() not in BLOCKED_LABELS]
@@ -291,16 +341,158 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     intent         = parsed["intent"]
     neighbourhoods = parsed["neighbourhoods"]
     years          = parsed["years"]
+    cleaned_metric = _clean_query_for_rag(query, neighbourhoods, years)
 
-    # 2. RAG — skip if user already confirmed a row
-    if confirmed_row_id is not None and confirmed_year is not None:
-        row_ids        = {confirmed_year: confirmed_row_id}
-        years          = [confirmed_year]  # use confirmed year only
+    # 2. if it is a trend, do a special multi-year search and answer generation flow
+    if intent == "trend":
+        search_query = cleaned_metric or query
+        canonical_field = (cleaned_metric or "").strip()
+        canonical_field = canonical_field if canonical_field in ATTRIBUTE_MAP else None
+
+        if canonical_field:
+            row_ids = {}
+            for y in sorted(years):
+                lookup_label = get_attribute(canonical_field, y)
+                row_id, score = find_row_in_year(lookup_label, y)
+                if row_id is not None and score > 0.3:
+                    row_ids[y] = row_id
+
+            if row_ids:
+                anchor_lookup = get_attribute(canonical_field, max(row_ids))
+                display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_lookup).strip()
+                display_metric = re.sub(r",?\s*\d{4}.*$", "", display_metric).strip()
+
+                values = _fetch_values(row_ids, neighbourhoods)
+                _drop_nan_values(values)
+
+                answer_text = _template_trend(
+                    values,
+                    neighbourhoods,
+                    sorted(values.keys()),
+                    display_metric or canonical_field.title(),
+                )
+                return {
+                    "answer":         answer_text,
+                    "intent":         intent,
+                    "metric":         display_metric or canonical_field.title(),
+                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
+                                       "values": values},
+                    "disambiguation": None,
+                }
+
+        if confirmed_row_id is not None and confirmed_year is not None and not canonical_field:
+            anchor_label = _get_label_for_row(confirmed_row_id, confirmed_year)
+            if anchor_label:
+                row_ids = {confirmed_year: confirmed_row_id}
+                for y in sorted(years):
+                    if y == confirmed_year:
+                        continue
+                    lookup_label = f"Population, {y}" if "Age groups" in anchor_label else anchor_label
+                    row_id, score = find_row_in_year(lookup_label, y)
+                    if row_id is not None and score > 0.3:
+                        row_ids[y] = row_id
+                if row_ids:
+                    display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_label).strip()
+                    display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
+                    values = _fetch_values(row_ids, neighbourhoods)
+                    _drop_nan_values(values)
+
+                    answer_text = _template_trend(
+                        values,
+                        neighbourhoods,
+                        sorted(values.keys()),
+                        display_metric or anchor_label,
+                    )
+                    return {
+                        "answer":         answer_text,
+                        "intent":         intent,
+                        "metric":         display_metric or anchor_label,
+                        "context":        {"years": years, "neighbourhoods": neighbourhoods,
+                                           "values": values},
+                        "disambiguation": None,
+                    }
+
+        disambig_results = []
+        if not canonical_field and confirmed_row_id is None:
+            anchor_year = max(years)
+            raw_results = semantic_search(search_query, year=anchor_year, limit=5)
+            disambig_results = [
+                r for r in raw_results if r["label"].strip() not in BLOCKED_LABELS
+            ]
+            if len(disambig_results) > 1:
+                return {
+                    "answer": None,
+                    "intent": intent,
+                    "metric": None,
+                    "context": {},
+                    "disambiguation": [
+                        {
+                            "row_id": r["row_id"],
+                            "year": r["year"],
+                            "label": r["label"],
+                            "score": r["score"],
+                        }
+                        for r in disambig_results
+                    ],
+                }
+
+        anchor_year = max(years)
         
+        if disambig_results:
+            anchor_results = disambig_results[:1]
+        else:
+            anchor_results = semantic_search(search_query, year=anchor_year, limit=10)
+            anchor_results = [
+                r for r in anchor_results if r["label"].strip() not in BLOCKED_LABELS
+            ]
+        
+        if anchor_results:
+            anchor_row = anchor_results[0]
+            anchor_label = anchor_row["label"]
+            row_ids = {anchor_year: anchor_row["row_id"]}
+            
+            for y in sorted(years):
+                if y == anchor_year:
+                    continue
+                if "Age groups" in anchor_label:
+                    lookup_label = f"Population, {y}"
+                else:
+                    lookup_label = anchor_label
+                row_id, score = find_row_in_year(lookup_label, y)
+                if row_id is not None and score > 0.3:
+                    row_ids[y] = row_id
+            
+            if row_ids:
+                display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_label).strip()
+                display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
+                
+                values = _fetch_values(row_ids, neighbourhoods)
+                _drop_nan_values(values)
+                
+                answer_text = _template_trend(values, neighbourhoods,
+                                            sorted(values.keys()), display_metric)
+                return {
+                    "answer":         answer_text,
+                    "intent":         intent,
+                    "metric":         display_metric,
+                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
+                                    "values": values},
+                    "disambiguation": None,
+                }
+            
+    # 3. RAG — skip if user already confirmed a row
+    if confirmed_row_id is not None and confirmed_year is not None:
+        row_ids = {confirmed_year: confirmed_row_id}
+
+        remaining_years = [y for y in years if y != confirmed_year]
+        if remaining_years:
+            additional_ids = _get_row_ids(query, neighbourhoods, remaining_years)
+            row_ids.update(additional_ids)
+
         confirmed_results = semantic_search(query, year=confirmed_year, limit=1)
         display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
     else:
-        search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
+        search_query = cleaned_metric or query
         results, needs_disambiguation = semantic_search_with_disambiguation(
             search_query, year=None, limit=5
         )
@@ -334,7 +526,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         )
         display_metric = year_results[0]["label"].strip() if year_results else results[0]["label"]
 
-    # 3. Fetch values
+    # 4. Fetch values
     if intent == "ranking":
         year = years[0]
         rid  = row_ids.get(year)
@@ -354,7 +546,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
             }
         values = _fetch_values(row_ids, neighbourhoods)
 
-    # 4. Generate answer from template
+    # 5. Generate answer from template
     template_fn = TEMPLATE_FNS.get(intent, _template_single_value)
     answer_text = template_fn(values, neighbourhoods, years, display_metric)
 

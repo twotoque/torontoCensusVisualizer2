@@ -6,6 +6,18 @@ _model  = SentenceTransformer('all-MiniLM-L6-v2')
 _client = chromadb.PersistentClient(path="/Users/dereksong/Documents/torontoCensusVisualizer2/data/chroma")
 _col    = _client.get_collection("census_rows")
 
+def find_row_in_year(curr_label: str, target_year: int) -> tuple[int | None, float]:
+    """
+    Given a label from one year, find the best matching row_id in target_year.
+    Returns (row_id, score) or (None, 0.0) if no match found.
+    """
+    results = semantic_search(curr_label, year=target_year, limit=3)
+    if not results:
+        return None, 0.0
+    best = results[0]
+    return best["row_id"], best["score"]
+
+
 def semantic_search_with_disambiguation(
     query: str,
     year: int | None = None,
