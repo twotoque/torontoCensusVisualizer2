@@ -44,8 +44,8 @@ STOP_WORDS = [
 
 ATTRIBUTE_MAP = {
     "population": {
-        2001: "Population, 2001",
-        2006: "Population, 2006",
+        2001: "Population, 2001 - 100% data",
+        2006: "Population, 2006 - 100% data",
         2011: "Population, 2011",
         2016: "Population, 2016",
         2021: "Total - Age groups of the population - 25% sample data",
