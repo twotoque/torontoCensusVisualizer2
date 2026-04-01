@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data_loader import load_population_series
-from prediction import fit_gp
+from prediction import fit_gp, fit_gp_per_sample
 import numpy as np
 import pandas as pd
 
@@ -50,7 +50,7 @@ for neigh in df.index:
     years  = np.array(train.index.tolist(), dtype=float)
     values = np.array(train.values, dtype=float)
     
-    gp, y_min, y_max = fit_gp(years, values)
+    gp, y_min, y_max = fit_gp_per_sample(years, values)
     
     X_pred = np.array([[(HOLDOUT_YEAR - y_min) / (y_max - y_min + 1e-8)]])
     mean, std = gp.predict(X_pred, return_std=True)
