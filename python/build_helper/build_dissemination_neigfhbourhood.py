@@ -1,11 +1,11 @@
 import geopandas as gpd
 
-da_path = r'\torontoCensusVisualizer2\data\dissemination-boundary\lda_000a21a_e.shp'
+da_path = r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\dissemination-boundary\lda_000a21a_e.shp'
 das = gpd.read_file(da_path)
 
 ontario_das = das[das['PRUID'] == '35'].copy()
 
-hood_158_path = r'\torontoCensusVisualizer2\data\neighbourhood-158\Neighbourhoods.geojson'
+hood_158_path = r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\neighbourhood-158\Neighbourhoods.geojson'
 hoods_158 = gpd.read_file(hood_158_path)
 
 # check and match the CRS
@@ -18,6 +18,6 @@ mapping_158 = gpd.sjoin(ontario_das, hoods_158, how="inner", predicate="within")
 
 print(f"Successfully mapped {len(mapping_158)} DAs to the 158-Neighbourhood system.")
 
-output_path = r'\torontoCensusVisualizer2\data\da_to_neighbourhood_mapping.parquet'
+output_path = r'C:\Users\Derek\wlucsa prod\torontoCensusVisualizer2\data\da_to_neighbourhood_mapping.parquet'
 mapping_158.to_parquet(output_path)
 print(f"Mapping saved to: {output_path}")
