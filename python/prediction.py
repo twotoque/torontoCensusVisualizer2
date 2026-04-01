@@ -12,12 +12,7 @@ import shap
 from data_loader import load_population_series
 from permits import load_permits
 
-import pyarrow.parquet as pq
 from pathlib import Path
-
-CROSSWALK_PATH = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
-
-da_map = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/da_to_neighbourhood_mapping 2.parquet')
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
