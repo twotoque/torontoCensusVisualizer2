@@ -20,7 +20,7 @@ weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer
 
 # training wheels for the RAG
 ENRICHMENTS = {
-    "population":        "total population count",
+    "population":        "population",
     "income":            "average total income",
     "household income":  "average household total income",
     "housing":           "dwelling units",
@@ -310,10 +310,52 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     intent         = parsed["intent"]
     neighbourhoods = parsed["neighbourhoods"]
     years          = parsed["years"]
+    cleaned_metric = _clean_query_for_rag(query, neighbourhoods, years)
 
     # 2. if it is a trend, do a special multi-year search and answer generation flow
     if intent == "trend":
-        search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
+        search_query = cleaned_metric or query
+        canonical_field = (cleaned_metric or "").strip()
+        canonical_field = canonical_field if canonical_field in ATTRIBUTE_MAP else None
+
+        if canonical_field:
+            row_ids = {}
+            for y in sorted(years):
+                lookup_label = get_attribute(canonical_field, y)
+                row_id, score = find_row_in_year(lookup_label, y)
+                if row_id is not None and score > 0.3:
+                    row_ids[y] = row_id
+
+            if row_ids:
+                anchor_lookup = get_attribute(canonical_field, max(row_ids))
+                display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_lookup).strip()
+                display_metric = re.sub(r",?\s*\d{4}.*$", "", display_metric).strip()
+
+                values = _fetch_values(row_ids, neighbourhoods)
+
+                import math
+                for y in list(values.keys()):
+                    for n in list(values[y].keys()):
+                        if isinstance(values[y][n], float) and math.isnan(values[y][n]):
+                            del values[y][n]
+                    if not values[y]:
+                        del values[y]
+
+                answer_text = _template_trend(
+                    values,
+                    neighbourhoods,
+                    sorted(values.keys()),
+                    display_metric or canonical_field.title(),
+                )
+                return {
+                    "answer":         answer_text,
+                    "intent":         intent,
+                    "metric":         display_metric or canonical_field.title(),
+                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
+                                       "values": values},
+                    "disambiguation": None,
+                }
+
         anchor_year = max(years)
         
         anchor_results = semantic_search(search_query, year=anchor_year, limit=10)
@@ -362,12 +404,17 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
             
     # 3. RAG — skip if user already confirmed a row
     if confirmed_row_id is not None and confirmed_year is not None:
-        row_ids = {year: confirmed_row_id for year in years}  # use same row across all years
-        
+        row_ids = {confirmed_year: confirmed_row_id}
+
+        remaining_years = [y for y in years if y != confirmed_year]
+        if remaining_years:
+            additional_ids = _get_row_ids(query, neighbourhoods, remaining_years)
+            row_ids.update(additional_ids)
+
         confirmed_results = semantic_search(query, year=confirmed_year, limit=1)
         display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
     else:
-        search_query = _clean_query_for_rag(query, neighbourhoods, years) or query
+        search_query = cleaned_metric or query
         results, needs_disambiguation = semantic_search_with_disambiguation(
             search_query, year=None, limit=5
         )
