@@ -7,6 +7,7 @@
 #
 # Everything is localish 
 
+import math
 import re
 
 from query_parser import parse
@@ -98,6 +99,16 @@ def _fetch_values(
                 result[year][n] = total / total_weight
 
     return result
+
+def _drop_nan_values(values: dict) -> dict:
+    """Remove NaN entries from a {year: {neighbourhood: value}} dict in-place and return it."""
+    for y in list(values.keys()):
+        for n in list(values[y].keys()):
+            if isinstance(values[y][n], float) and math.isnan(values[y][n]):
+                del values[y][n]
+        if not values[y]:
+            del values[y]
+    return values
 
 def _get_label_for_row(row_id: int, year: int) -> str | None:
     """Return the descriptive label for a given row/year."""
@@ -353,14 +364,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 display_metric = re.sub(r",?\s*\d{4}.*$", "", display_metric).strip()
 
                 values = _fetch_values(row_ids, neighbourhoods)
-
-                import math
-                for y in list(values.keys()):
-                    for n in list(values[y].keys()):
-                        if isinstance(values[y][n], float) and math.isnan(values[y][n]):
-                            del values[y][n]
-                    if not values[y]:
-                        del values[y]
+                _drop_nan_values(values)
 
                 answer_text = _template_trend(
                     values,
@@ -392,14 +396,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                     display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_label).strip()
                     display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
                     values = _fetch_values(row_ids, neighbourhoods)
-
-                    import math
-                    for y in list(values.keys()):
-                        for n in list(values[y].keys()):
-                            if isinstance(values[y][n], float) and math.isnan(values[y][n]):
-                                del values[y][n]
-                        if not values[y]:
-                            del values[y]
+                    _drop_nan_values(values)
 
                     answer_text = _template_trend(
                         values,
@@ -471,14 +468,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
                 
                 values = _fetch_values(row_ids, neighbourhoods)
-                
-                import math
-                for y in list(values.keys()):
-                    for n in list(values[y].keys()):
-                        if isinstance(values[y][n], float) and math.isnan(values[y][n]):
-                            del values[y][n]
-                    if not values[y]:
-                        del values[y]
+                _drop_nan_values(values)
                 
                 answer_text = _template_trend(values, neighbourhoods,
                                             sorted(values.keys()), display_metric)
