@@ -42,7 +42,22 @@ STOP_WORDS = [
     r"\bthe\b", r"\band\b", r"\bin\b", r"\bto\b", r"\bof\b",
 ]
 
-    
+ATTRIBUTE_MAP = {
+    "population": {
+        2001: "Population, 2001",
+        2006: "Population, 2006",
+        2011: "Population, 2011",
+        2016: "Population, 2016",
+        2021: "Total - Age groups of the population - 25% sample data",
+    }
+}
+
+def get_attribute(field: str, year: int) -> str:
+    """Return the correct CSV attribute name for a given field and year."""
+    if field in ATTRIBUTE_MAP:
+        return ATTRIBUTE_MAP[field].get(year, field)
+    return field
+
 def _fetch_values(
     row_ids: dict,     
     neighbourhoods: list[str],
@@ -124,8 +139,11 @@ def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dic
     for year in years:
         search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
         # append year to help find year-specific rows like "Population, 2011"
-        if search_query and str(year) not in search_query:
-            search_query = f"{search_query} {year}"
+        if search_query:
+            if year == 2021 and "population" in search_query.lower():
+                search_query = "Total - Age groups of the population - 25% sample data"
+            elif str(year) not in search_query:
+                search_query = f"{search_query} {year}"
 
         results = semantic_search(search_query, year=year, limit=5)
         results = [r for r in results if r["label"].strip() not in BLOCKED_LABELS]
@@ -309,7 +327,11 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
             for y in sorted(years):
                 if y == anchor_year:
                     continue
-                row_id, score = find_row_in_year(anchor_label, y)
+                if "Age groups" in anchor_label:
+                    lookup_label = f"Population, {y}"
+                else:
+                    lookup_label = anchor_label
+                row_id, score = find_row_in_year(lookup_label, y)
                 if row_id is not None and score > 0.3:
                     row_ids[y] = row_id
             
