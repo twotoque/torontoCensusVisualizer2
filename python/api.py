@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from census_registry import available_years, get_paths
-from data_loader import load_census, load_geo
+from data_loader import load_census, load_geo, load_population_series
 from figures import build_bar, build_map, build_stack, export_pdf, search_rows
 from rag import semantic_search
 from ask import answer as ask_answer
@@ -16,7 +16,7 @@ import math
 
 from functools import lru_cache
 
-from prediction import forecast, compare_neighbourhoods, load_population_series
+from prediction import forecast, compare_neighbourhoods
 
 
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
