@@ -64,6 +64,10 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	r.Get("/api/census/search/semantic",        ro.semanticSearchGlobal)
 	r.Post("/api/ask", ro.ask)
 
+	r.Get("/api/predict/neighbourhoods",  ro.predictNeighbourhoods)
+	r.Post("/api/predict/compare",        ro.predictCompare)
+	r.Get("/api/predict/{neighbourhood}", ro.predictNeighbourhood)
+
 	// future ml route?: 
 	// r.Get("/api/ml/census/{year}/row/{row}/predict",  ro.mlPredict)
 	// r.Post("/api/ml/census/{year}/cluster",           ro.mlCluster)
@@ -189,4 +193,22 @@ func (ro *Router) compareYears(w http.ResponseWriter, r *http.Request) {
         fmt.Sprintf("compare:%d:%d:%d", year, row, prevYear),
         "application/json",
     )
+}
+
+func (ro *Router) predictNeighbourhoods(w http.ResponseWriter, r *http.Request) {
+    ro.figures.Get(w, "/predict/neighbourhoods", "predict:neighbourhoods", "application/json")
+}
+
+func (ro *Router) predictNeighbourhood(w http.ResponseWriter, r *http.Request) {
+    neighbourhood := chi.URLParam(r, "neighbourhood")
+    years         := r.URL.Query().Get("years")
+    path          := fmt.Sprintf("/predict/%s", neighbourhood)
+    if years != "" {
+        path += "?years=" + years
+    }
+    ro.figures.Get(w, path, fmt.Sprintf("predict:%s:%s", neighbourhood, years), "application/json")
+}
+
+func (ro *Router) predictCompare(w http.ResponseWriter, r *http.Request) {
+    ro.figures.Post(w, r, "/predict/compare", "", "application/json")
 }

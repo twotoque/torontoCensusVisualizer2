@@ -8,13 +8,16 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from census_registry import available_years, get_paths
-from data_loader import load_census, load_geo
+from data_loader import load_census, load_geo, load_population_series
 from figures import build_bar, build_map, build_stack, export_pdf, search_rows
 from rag import semantic_search
 from ask import answer as ask_answer
 import math
 
 from functools import lru_cache
+
+from prediction import forecast, compare_neighbourhoods
+
 
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
 
@@ -256,4 +259,22 @@ def semantic_global(q: str):
 @app.post("/ask")
 def ask(body: AskRequest):
     result = ask_answer(body.question, body.confirmed_row_id, body.confirmed_year)
+    return JSONResponse(content=_sanitize(result))
+
+@app.get("/predict/neighbourhoods")
+def predict_neighbourhoods():
+    pop_df = load_population_series()
+    return JSONResponse(content={"neighbourhoods": sorted(pop_df.index.tolist())})
+
+@app.get("/predict/{neighbourhood}")
+def predict(neighbourhood: str, years: str = "2026,2031"):
+    forecast_years = [int(y) for y in years.split(",")]
+    result = forecast(neighbourhood, forecast_years)
+    return JSONResponse(content=_sanitize(result))
+
+@app.post("/predict/compare")
+def predict_compare(body: dict):
+    neighbourhoods  = body.get("neighbourhoods", [])
+    forecast_years  = body.get("years", [2026, 2031])
+    result = compare_neighbourhoods(neighbourhoods, forecast_years)
     return JSONResponse(content=_sanitize(result))

@@ -11,6 +11,7 @@ interface SidebarProps {
 const NAV = [
   { id: "chat",   path: "/",       icon: "💬", label: "Ask" },
   { id: "census", path: "/census", icon: "📊", label: "Census Explorer" },
+  { id: "prediction", path: "/prediction", icon: "📈", label: "Prediction" },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ t }) => {
