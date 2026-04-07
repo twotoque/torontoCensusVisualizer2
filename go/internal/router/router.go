@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"net/url"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -52,7 +54,7 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 
 	// cell ref
 	r.Get("/api/census/cell", ro.getCell)
-	
+
 	// census figure routes:
 	r.Get("/api/years",                                  ro.getYears)
 	r.Get("/api/census/{year}/search",                   ro.search)
@@ -219,13 +221,13 @@ func (ro *Router) predictCompare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ro *Router) getCell(w http.ResponseWriter, r *http.Request) {
-    year         := r.URL.Query().Get("year")
-    rowID        := r.URL.Query().Get("row_id")
+    year          := r.URL.Query().Get("year")
+    rowID         := r.URL.Query().Get("row_id")
     neighbourhood := r.URL.Query().Get("neighbourhood")
-    contextRows  := r.URL.Query().Get("context_rows")
+    contextRows   := r.URL.Query().Get("context_rows")
 
     path := fmt.Sprintf("/census/cell?year=%s&row_id=%s&neighbourhood=%s",
-        year, rowID, neighbourhood)
+        year, rowID, url.QueryEscape(neighbourhood))
     if contextRows != "" {
         path += "&context_rows=" + contextRows
     }

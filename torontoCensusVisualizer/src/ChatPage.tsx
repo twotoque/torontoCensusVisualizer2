@@ -331,9 +331,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t,  }) => {
   const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("chat_history", JSON.stringify(messages));
+    const stripped = messages.map(({ cell: _cell, ...rest }) => rest);
+    localStorage.setItem("chat_history", JSON.stringify(stripped));
   }, [messages]);
-
   async function send() {
     if (!question.trim() || loading) return;
     const q = question.trim();
