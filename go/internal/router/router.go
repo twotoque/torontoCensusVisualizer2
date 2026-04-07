@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"net/url"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -49,6 +51,10 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 		AllowedHeaders: []string{"Content-Type"},
 	}))
 
+
+	// cell ref
+	r.Get("/api/census/cell", ro.getCell)
+
 	// census figure routes:
 	r.Get("/api/years",                                  ro.getYears)
 	r.Get("/api/census/{year}/search",                   ro.search)
@@ -67,6 +73,7 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	r.Get("/api/predict/neighbourhoods",  ro.predictNeighbourhoods)
 	r.Post("/api/predict/compare",        ro.predictCompare)
 	r.Get("/api/predict/{neighbourhood}", ro.predictNeighbourhood)
+
 
 	// future ml route?: 
 	// r.Get("/api/ml/census/{year}/row/{row}/predict",  ro.mlPredict)
@@ -211,4 +218,20 @@ func (ro *Router) predictNeighbourhood(w http.ResponseWriter, r *http.Request) {
 
 func (ro *Router) predictCompare(w http.ResponseWriter, r *http.Request) {
     ro.figures.Post(w, r, "/predict/compare", "", "application/json")
+}
+
+func (ro *Router) getCell(w http.ResponseWriter, r *http.Request) {
+    year          := r.URL.Query().Get("year")
+    rowID         := r.URL.Query().Get("row_id")
+    neighbourhood := r.URL.Query().Get("neighbourhood")
+    contextRows   := r.URL.Query().Get("context_rows")
+
+    path := fmt.Sprintf("/census/cell?year=%s&row_id=%s&neighbourhood=%s",
+        year, rowID, url.QueryEscape(neighbourhood))
+    if contextRows != "" {
+        path += "&context_rows=" + contextRows
+    }
+
+    // no caching — cell lookups are tied to specific chat answers
+    ro.figures.Get(w, path, "", "application/json")
 }

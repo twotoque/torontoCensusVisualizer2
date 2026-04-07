@@ -283,3 +283,49 @@ def predict_compare(body: dict):
     forecast_years  = body.get("years", [2026, 2031])
     result = compare_neighbourhoods(neighbourhoods, forecast_years)
     return JSONResponse(content=_sanitize(result))
+
+@app.get("/census/cell")
+def get_cell(year: int, row_id: int, neighbourhood: str, context_rows: int = 6):
+    try:
+        paths = get_paths(year)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    df        = load_census(paths["census"], drop_cols=tuple(paths.get("drop_cols", ())))
+    id_col    = paths.get("id_col")
+    label_col = paths["label_col"]
+
+    # resolve row index
+    if id_col and id_col in df.columns:
+        matches = df.index[df[id_col] == row_id].tolist()
+        if not matches:
+            raise HTTPException(status_code=404, detail=f"row_id {row_id} not found")
+        idx = matches[0]
+    else:
+        idx = row_id
+        if idx >= len(df):
+            raise HTTPException(status_code=404, detail=f"row_id {row_id} out of range")
+
+    # slice rows
+    row_start = max(0, idx - context_rows)
+    row_end   = min(len(df), idx + context_rows + 1)
+    slice_df  = df.iloc[row_start:row_end].copy()
+
+    # slice columns: label + target neighbourhood ± 2 neighbours
+    data_cols = [c for c in df.columns if c != label_col]
+    if neighbourhood in data_cols:
+        ci        = data_cols.index(neighbourhood)
+        col_slice = data_cols[max(0, ci - 2) : ci + 3]
+    else:
+        col_slice = data_cols[:5]
+
+    slice_df = slice_df[[label_col] + col_slice]
+
+    return _sanitize({
+        "rows":          slice_df.to_dict(orient="records"),
+        "target_row_id": row_id,
+        "target_col":    neighbourhood,
+        "label_col":     label_col,
+        "target_df_idx": int(idx),
+        "row_start":     int(row_start),
+    })
