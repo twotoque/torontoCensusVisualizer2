@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { type Tokens } from "./colours";
+import { CellViewer, type CellTarget, type CellInfo  } from "./CellViewer";
 
 const API = "/api";
 
@@ -47,12 +48,6 @@ const IconTrash = () => (
 
 // ── CellBadge ─────────────────────────────────────────────────────────────────
 
-interface CellInfo {
-  row_label: string;
-  row_id:    number;
-  columns:   string[];
-  year:      number;
-}
 
 const CellBadge: React.FC<{ t: Tokens; cell: CellInfo }> = ({ t, cell }) => (
   <div style={{
@@ -77,9 +72,10 @@ interface MessageBubbleProps {
   t:        Tokens;
   msg:      Message;
   onSelect: (rowId: number, year: number, question: string) => void;
+  onJumpToCell:  (target: CellTarget) => void; 
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ t, msg, onSelect }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ t, msg, onSelect, onJumpToCell }) => {
   const isUser   = msg.role === "user";
   const isDisam  = msg.role === "disambiguation";
 
@@ -108,6 +104,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ t, msg, onSelect }
           <>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: t.textMuted }}>
               {msg.content}
+
+              
             </div>
             {msg.options?.map((opt, i) => (
               <button
@@ -128,12 +126,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ t, msg, onSelect }
               </button>
             ))}
           </>
-        ) : (
-          msg.content
-        )}
-        {!isDisam && msg.cell && (
-          <CellBadge t={t} cell={msg.cell} />
-        )}
+       ) : (
+  <>
+    {msg.content}
+    {msg.cell && (
+      <button
+        onClick={() => onJumpToCell({
+          year:          msg.cell!.year,
+          row_id:        msg.cell!.row_id,
+          neighbourhood: msg.cell!.columns[0],
+          metric:        msg.cell!.row_label,
+        })}
+        style={{
+          marginTop: 8, display: "flex", alignItems: "center", gap: 6,
+          background: "none", border: `1px solid ${t.border}`,
+          borderRadius: 6, padding: "4px 10px",
+          cursor: "pointer", fontSize: 11, color: t.textMuted,
+        }}
+      >
+        ↗ Jump to cell
+      </button>
+    )}
+  </>
+)}
+        
+
       </div>
     </div>
   );
@@ -167,9 +184,10 @@ interface MessageListProps {
   messages:  Message[];
   loading:   boolean;
   onSelect:  (rowId: number, year: number, question: string) => void;
+  onJumpToCell:  (target: CellTarget) => void;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ t, messages, loading, onSelect }) => {
+export const MessageList: React.FC<MessageListProps> = ({ t, messages, loading, onSelect, onJumpToCell}) => {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -195,7 +213,7 @@ export const MessageList: React.FC<MessageListProps> = ({ t, messages, loading, 
       )}
 
       {messages.map(msg => (
-        <MessageBubble key={msg.id} t={t} msg={msg} onSelect={onSelect} />
+        <MessageBubble key={msg.id} t={t} msg={msg} onSelect={onSelect} onJumpToCell={onJumpToCell}/>
       ))}
 
       {loading && <TypingIndicator t={t} />}
@@ -302,13 +320,15 @@ interface ChatPageProps {
 
 function uid() { return Math.random().toString(36).slice(2); }
 
-export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
+export const ChatPage: React.FC<ChatPageProps> = ({ t,  }) => {
   const [messages, setMessages] = useState<Message[]>(() => {
     try { return JSON.parse(localStorage.getItem("chat_history") || "[]"); }
     catch { return []; }
   });
   const [question, setQuestion] = useState("");
   const [loading, setLoading]   = useState(false);
+
+  const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
 
   useEffect(() => {
     localStorage.setItem("chat_history", JSON.stringify(messages));
@@ -339,7 +359,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
           id:      uid(),
           role:    "assistant",
           content: d.answer || "No answer returned.",
-          cell:    d.context?.cell,   // ← pull from context
+          cell:    d.context?.cell,
         }]);
       }
     } catch {
@@ -360,6 +380,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
       setMessages(m => [...m, {
         id: uid(), role: "assistant",
         content: d.answer || "No answer returned.",
+        cell:    d.context?.cell
       }]);
     } catch {
       setMessages(m => [...m, { id: uid(), role: "assistant", content: "Error contacting the server." }]);
@@ -375,7 +396,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <MessageList t={t} messages={messages} loading={loading} onSelect={confirm} />
+      <MessageList t={t} messages={messages} loading={loading} onSelect={confirm} onJumpToCell={setCellTarget} />
       <ChatInput
         t={t}
         value={question}
@@ -384,6 +405,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
         onChange={setQuestion}
         onSend={send}
         onClear={clear}
+      />
+      <CellViewer
+        t={t}
+        target={cellTarget}
+        onClose={() => setCellTarget(null)}
       />
     </div>
   );
