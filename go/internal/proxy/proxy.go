@@ -14,6 +14,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"toronto-census/internal/cache"
 )
@@ -24,10 +25,23 @@ type Proxy struct {
 	backendURL string
 	cache      *cache.Cache
 	name       string // for logging
+	client     *http.Client 
 }
 
 func New(backendURL, name string, c *cache.Cache) *Proxy {
-	return &Proxy{backendURL: backendURL, cache: c, name: name}
+	return &Proxy{
+		backendURL: backendURL,
+		cache:      c,
+		name:       name,
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        20,
+				MaxIdleConnsPerHost: 20,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
+	}
 }
 
 // Get forwards a GET request. If cacheKey is non-empty, the response is
@@ -43,7 +57,7 @@ func (p *Proxy) Get(w http.ResponseWriter, backendPath, cacheKey, contentType st
 	}
 
 	// 2. cache miss → call python, return error if it fails
-	resp, err := http.Get(p.backendURL + backendPath)
+	resp, err := p.client.Get(p.backendURL + backendPath)
 	if err != nil {
 		log.Printf("[%s] GET %s error: %v", p.name, backendPath, err)
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
@@ -87,7 +101,7 @@ func (p *Proxy) Post(w http.ResponseWriter, r *http.Request, backendPath, cacheK
 		}
 	}
 
-	resp, err := http.Post(
+	resp, err := p.client.Post(
 		p.backendURL+backendPath,
 		"application/json",
 		bytes.NewReader(reqBody),
@@ -124,11 +138,10 @@ func (p *Proxy) Stream(w http.ResponseWriter, r *http.Request, backendPath, file
 
 	if r.Method == http.MethodPost {
 		body, _ := io.ReadAll(r.Body)
-		resp, err = http.Post(p.backendURL+backendPath, "application/json", bytes.NewReader(body))
+		resp, err = p.client.Post(p.backendURL+backendPath, "application/json", bytes.NewReader(body))
 	} else {
-		resp, err = http.Get(p.backendURL + backendPath)
+		resp, err = p.client.Get(p.backendURL + backendPath)
 	}
-
 	if err != nil {
 		log.Printf("[%s] stream %s error: %v", p.name, backendPath, err)
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
