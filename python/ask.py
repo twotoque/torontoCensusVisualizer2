@@ -299,7 +299,7 @@ def _build_cell_info(row_ids: dict, neighbourhoods: list[str], display_metric: s
     return {
         "row_label": label or display_metric,
         "row_id":    row_id,
-        "columns":   neighbourhoods,   # these are the spreadsheet column headers
+        "columns":   neighbourhoods[:1] if neighbourhoods else [],   # keep a single navigable spreadsheet column header
         "year":      year,
     }
 
