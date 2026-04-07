@@ -5,17 +5,57 @@ import numpy as np
 import pandas as pd
 from functools import lru_cache
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
 from permits import load_permits
+from sklearn.preprocessing import StandardScaler
 
 from pathlib import Path
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
+
+KERNEL_CONFIGS = {
+    "rbf": {
+        "name": "RBF (Radial Basis Function)",
+        "description": "Smooth, flexible, assumes similarity decreases with distance",
+        "builder": lambda: (
+            C(1.0, (1e-3, 1e6))
+            * RBF(length_scale=0.5, length_scale_bounds="fixed")
+            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+        ),
+    },
+    "matern_3_2": {
+        "name": "Matern ν=3/2",
+        "description": "Less smooth than RBF, better for non-smooth data",
+        "builder": lambda: (
+            C(1.0, (1e-3, 1e6))
+            * Matern(length_scale=0.5, nu=1.5, length_scale_bounds="fixed")
+            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+        ),
+    },
+    "matern_5_2": {
+        "name": "Matern ν=5/2",
+        "description": "Smoother than 3/2, good balance for real-world data",
+        "builder": lambda: (
+            C(1.0, (1e-3, 1e6))
+            * Matern(length_scale=0.5, nu=2.5, length_scale_bounds="fixed")
+            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+        ),
+    },
+    "rational_quadratic": {
+        "name": "Rational Quadratic",
+        "description": "Mixture of RBF kernels at different scales; good for data with multiple scales",
+        "builder": lambda: (
+            C(1.0, (1e-3, 1e6))
+            * RationalQuadratic(length_scale=0.5, alpha=1.0, length_scale_bounds="fixed")
+            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+        ),
+    },
+}
 
 def normalize_neighbourhood(name: str) -> str:
     return name  
@@ -67,8 +107,6 @@ def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
         "residential_permits": 0.0, "demolition_permits": 0.0,
     }
 def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
-    from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
-    from sklearn.preprocessing import StandardScaler
 
     # 2021 anchor explicitly as a training point with high trust
     if true_2021_value is not None:
@@ -145,6 +183,104 @@ def fit_gp(years: np.ndarray, values: np.ndarray):
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5, normalize_y=True)
     gp.fit(X_norm, y)
     return gp, X.min(), X.max()
+
+
+def fit_gp_with_kernel(
+    years: np.ndarray,
+    values: np.ndarray,
+    kernel_type: Literal[
+        "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", 
+       
+    ] = "rbf",
+) -> Tuple[GaussianProcessRegressor, float, float]:
+    """
+    Fit a Gaussian Process with any kernel type to (years, population) data.
+    
+    Args:
+        years: array of year values
+        values: array of population values
+        kernel_type: one of the keys in KERNEL_CONFIGS
+    
+    Returns:
+        (fitted_gp, X_min, X_max)
+    """
+    if kernel_type not in KERNEL_CONFIGS:
+        raise ValueError(f"Unknown kernel_type '{kernel_type}'. Available: {list(KERNEL_CONFIGS.keys())}")
+    
+    X = years.reshape(-1, 1).astype(float)
+    y = values.astype(float)
+
+    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
+
+    kernel = KERNEL_CONFIGS[kernel_type]["builder"]()
+
+    gp = GaussianProcessRegressor(
+        kernel=kernel,
+        n_restarts_optimizer=5,
+        normalize_y=True,
+    )
+    gp.fit(X_norm, y)
+    return gp, X.min(), X.max()
+
+
+def fit_gp_da_with_kernel(
+    years: np.ndarray,
+    values: np.ndarray,
+    neighbourhood_name: str,
+    kernel_type: Literal[
+        "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", 
+        "exp_sine_squared", "dot_product"
+    ] = "rbf",
+    true_2021_value: float | None = None,
+) -> Tuple[GaussianProcessRegressor, float, float, StandardScaler]:
+    """
+    Fit a GP with custom kernel, with optional 2021 anchor point.
+    
+    Args:
+        years: array of year values
+        values: array of population values
+        neighbourhood_name: for determining stability
+        kernel_type: one of the keys in KERNEL_CONFIGS
+        true_2021_value: optional anchor point for 2021
+    
+    Returns:
+        (fitted_gp, X_min, X_max, y_scaler)
+    """
+    if kernel_type not in KERNEL_CONFIGS:
+        raise ValueError(f"Unknown kernel_type '{kernel_type}'. Available: {list(KERNEL_CONFIGS.keys())}")
+
+    if true_2021_value is not None:
+        years  = np.append(years, 2021.0)
+        values = np.append(values, float(true_2021_value))
+
+    X = years.reshape(-1, 1).astype(float)
+    y = values.astype(float)
+
+    x_min, x_max = X.min(), X.max()
+    X_norm = (X - x_min) / (x_max - x_min + 1e-8)
+
+    y_scaler = StandardScaler()
+    y_scaled = y_scaler.fit_transform(y.reshape(-1, 1)).ravel()
+
+    is_split = neighbourhood_name in SPLIT_NEIGHBOURHOOD_LIST
+
+    if true_2021_value is not None:
+        alpha = np.where(years == 2021, 1e-6, 0.5 if is_split else 0.05)
+    else:
+        alpha = 0.5 if is_split else 0.05
+
+    kernel = KERNEL_CONFIGS[kernel_type]["builder"]()
+
+    gp = GaussianProcessRegressor(
+        kernel=kernel,
+        alpha=alpha,
+        n_restarts_optimizer=5,
+        normalize_y=False,
+    )
+    gp.fit(X_norm, y_scaled)
+
+    return gp, x_min, x_max, y_scaler
+
 
 
 def forecast(
