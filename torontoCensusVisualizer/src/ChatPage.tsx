@@ -46,26 +46,6 @@ const IconTrash = () => (
   </svg>
 );
 
-// ── CellBadge ─────────────────────────────────────────────────────────────────
-
-
-const CellBadge: React.FC<{ t: Tokens; cell: CellInfo }> = ({ t, cell }) => (
-  <div style={{
-    marginTop: 8, padding: "6px 10px",
-    background: t.surfaceAlt, borderRadius: 6,
-    border: `1px solid ${t.border}`,
-    fontSize: 11, color: t.textMuted,
-    fontFamily: "monospace",
-  }}>
-    <span style={{ fontWeight: 600, color: t.text }}>Row:</span> {cell.row_label}
-    {"  ·  "}
-    <span style={{ fontWeight: 600, color: t.text }}>Col(s):</span>{" "}
-    {cell.columns.join(", ")}
-    {"  ·  "}
-    <span style={{ fontWeight: 600, color: t.text }}>Year:</span> {cell.year}
-  </div>
-);
-
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
 interface MessageBubbleProps {
