@@ -139,6 +139,7 @@ export const CellViewer: React.FC<CellViewerProps> = ({ t, target, onClose }) =>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close cell viewer"
             style={{
               background: "none", border: "none", cursor: "pointer",
               color: t.textMuted, fontSize: 20, lineHeight: 1,
