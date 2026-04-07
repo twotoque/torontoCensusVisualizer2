@@ -26,6 +26,7 @@ export interface Message {
   content:   string;
   options?:  DisambigOption[];
   question?: string;  // original question for disambiguation follow-up
+  cell?:    CellInfo;
 }
 
 // ── icons ─────────────────────────────────────────────────────────────────────
@@ -42,6 +43,32 @@ const IconTrash = () => (
     <polyline points="3 6 5 6 21 6"/>
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
   </svg>
+);
+
+// ── CellBadge ─────────────────────────────────────────────────────────────────
+
+interface CellInfo {
+  row_label: string;
+  row_id:    number;
+  columns:   string[];
+  year:      number;
+}
+
+const CellBadge: React.FC<{ t: Tokens; cell: CellInfo }> = ({ t, cell }) => (
+  <div style={{
+    marginTop: 8, padding: "6px 10px",
+    background: t.surfaceAlt, borderRadius: 6,
+    border: `1px solid ${t.border}`,
+    fontSize: 11, color: t.textMuted,
+    fontFamily: "monospace",
+  }}>
+    <span style={{ fontWeight: 600, color: t.text }}>Row:</span> {cell.row_label}
+    {"  ·  "}
+    <span style={{ fontWeight: 600, color: t.text }}>Col(s):</span>{" "}
+    {cell.columns.join(", ")}
+    {"  ·  "}
+    <span style={{ fontWeight: 600, color: t.text }}>Year:</span> {cell.year}
+  </div>
 );
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
@@ -95,12 +122,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ t, msg, onSelect }
                   transition: "background 0.12s",
                 }}
               >
+                
                 {opt.document || opt.label} ({opt.year})
+                
               </button>
             ))}
           </>
         ) : (
           msg.content
+        )}
+        {!isDisam && msg.cell && (
+          <CellBadge t={t} cell={msg.cell} />
         )}
       </div>
     </div>
@@ -304,8 +336,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ t }) => {
         }]);
       } else {
         setMessages(m => [...m, {
-          id: uid(), role: "assistant",
+          id:      uid(),
+          role:    "assistant",
           content: d.answer || "No answer returned.",
+          cell:    d.context?.cell,   // ← pull from context
         }]);
       }
     } catch {

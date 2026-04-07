@@ -289,6 +289,20 @@ TEMPLATE_FNS = {
 }
 
 
+def _build_cell_info(row_ids: dict, neighbourhoods: list[str], display_metric: str) -> dict:
+    """Return human-readable cell provenance for the frontend."""
+    if not row_ids:
+        return {}
+    year = next(iter(row_ids))
+    row_id = row_ids[year]
+    label = _get_label_for_row(row_id, year)
+    return {
+        "row_label": label or display_metric,
+        "row_id":    row_id,
+        "columns":   neighbourhoods,   # these are the spreadsheet column headers
+        "year":      year,
+    }
+
 # rank all neighboruhood values
 
 def _fetch_all_neighbourhoods_for_year(row_id: int, year: int) -> dict:
@@ -554,6 +568,11 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         "answer":         answer_text,
         "intent":         intent,
         "metric":         display_metric,
-        "context":        {"years": years, "neighbourhoods": neighbourhoods, "values": values},
+        "context":        {
+            "years":           years,
+            "neighbourhoods":  neighbourhoods,
+            "values":          values,
+            "cell": _build_cell_info(row_ids, neighbourhoods, display_metric),
+        },
         "disambiguation": None,
     }
