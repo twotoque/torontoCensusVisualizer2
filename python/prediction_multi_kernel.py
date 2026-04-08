@@ -60,24 +60,6 @@ KERNEL_CONFIGS = {
             + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
         ),
     },
-    "exp_sine_squared": {
-        "name": "Exponential Sine Squared (Periodic)",
-        "description": "Periodic patterns; useful if population shows cyclical trends",
-        "builder": lambda: (
-            C(1.0, (1e-3, 1e6))
-            * ExpSineSquared(length_scale=0.5, periodicity=5.0, length_scale_bounds="fixed")
-            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
-        ),
-    },
-    "dot_product": {
-        "name": "Dot Product (Linear)",
-        "description": "Linear relationships; computationally efficient",
-        "builder": lambda: (
-            C(1.0, (1e-3, 1e6))
-            * DotProduct(sigma_0=1.0)
-            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
-        ),
-    },
 }
 
 
@@ -88,7 +70,6 @@ def fit_gp_with_kernel(
     values: np.ndarray,
     kernel_type: Literal[
         "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", 
-        "exp_sine_squared", "dot_product"
     ] = "rbf",
 ) -> Tuple[GaussianProcessRegressor, float, float]:
     """
@@ -127,7 +108,6 @@ def fit_gp_da_with_kernel(
     neighbourhood_name: str,
     kernel_type: Literal[
         "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", 
-        "exp_sine_squared", "dot_product"
     ] = "rbf",
     true_2021_value: float | None = None,
 ) -> Tuple[GaussianProcessRegressor, float, float, StandardScaler]:
