@@ -19,21 +19,14 @@ class TeeLogger:
         self.terminal.flush()
         self.log.flush()
 
-log_file = "kernel_test_results.txt"
-sys.stdout = TeeLogger(log_file)
-
 from data_loader import load_population_series
 from prediction_multi_kernel import fit_gp_with_kernel, KERNEL_CONFIGS
 
-BASE_PATH    = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data")
+BASE_PATH    = Path(__file__).resolve().parent.parent.parent / "data"
 WEIGHTS_PATH = BASE_PATH / "weights/158_to_140.parquet"
 
-df  = load_population_series()
-cw  = pd.read_parquet(WEIGHTS_PATH)
-stable_list = cw[cw["weight"] > 0.95]["AREA_NAME_1"].unique().tolist()
 
-
-def run_backtest(holdout_year: int, kernel_type: str) -> list[dict]:
+def run_backtest(holdout_year: int, kernel_type: str, df, stable_list) -> list[dict]:
     """
     Train on census years < holdout_year, predict holdout_year.
     Uses raw weighted census values for both 2016 and 2021 (no DA anchor).
@@ -54,9 +47,9 @@ def run_backtest(holdout_year: int, kernel_type: str) -> list[dict]:
         values = np.array(train.values, dtype=float)
 
         try:
-            gp, y_min, y_max = fit_gp_with_kernel(years, values, kernel_type=kernel_type)
+            gp, x_min, x_max = fit_gp_with_kernel(years, values, kernel_type=kernel_type)
 
-            X_pred = np.array([[(holdout_year - y_min) / (y_max - y_min + 1e-8)]])
+            X_pred = np.array([[(holdout_year - x_min) / (x_max - x_min + 1e-8)]])
             pred, std = gp.predict(X_pred, return_std=True)
 
             predicted_val = float(pred[0])
@@ -94,33 +87,46 @@ def print_summary(label: str, results: list[dict]):
             f"Signed={group.signed_error.mean():.1f}%"
         )
 
-# main
 
-print("=" * 80)
-print("Weighted Census Backtest  |  2016 vs 2021  |  fit_gp_with_kernel (no anchor)")
-print("Both holdouts use raw weighted census actuals. No DA data.")
-print("=" * 80)
+if __name__ == "__main__":
+    if not WEIGHTS_PATH.exists():
+        print(f"ERROR: weights file not found: {WEIGHTS_PATH}", file=sys.stderr)
+        sys.exit(1)
 
-for kernel_type, cfg in KERNEL_CONFIGS.items():
-    if kernel_type == "polynomial":
-        continue
+    df  = load_population_series()
+    cw  = pd.read_parquet(WEIGHTS_PATH)
+    stable_list = cw[cw["weight"] > 0.95]["AREA_NAME_1"].unique().tolist()
 
-    r2016 = run_backtest(2016, kernel_type)
-    r2021 = run_backtest(2021, kernel_type)
+    log_file = "kernel_test_results.txt"
+    logger = TeeLogger(log_file)
+    original_stdout = sys.stdout
+    sys.stdout = logger
+    try:
+        print("=" * 80)
+        print("Weighted Census Backtest  |  2016 vs 2021  |  fit_gp_with_kernel (no anchor)")
+        print("Both holdouts use raw weighted census actuals. No DA data.")
+        print("=" * 80)
 
-    print(f"\n{'─' * 60}")
-    print(f"Kernel : {cfg['name']}")
-    print(f"Desc   : {cfg['description']}")
+        for kernel_type, cfg in KERNEL_CONFIGS.items():
+            if kernel_type == "polynomial":
+                continue
 
-    print(f"  Holdout 2016  (train ≤2011, weighted census actual):")
-    print_summary("2016", r2016)
+            r2016 = run_backtest(2016, kernel_type, df, stable_list)
+            r2021 = run_backtest(2021, kernel_type, df, stable_list)
 
-    print(f"  Holdout 2021  (train ≤2016, weighted census actual):")
-    print_summary("2021", r2021)
+            print(f"\n{'─' * 60}")
+            print(f"Kernel : {cfg['name']}")
+            print(f"Desc   : {cfg['description']}")
 
-print("\n" + "=" * 80)
+            print(f"  Holdout 2016  (train ≤2011, weighted census actual):")
+            print_summary("2016", r2016)
 
+            print(f"  Holdout 2021  (train ≤2016, weighted census actual):")
+            print_summary("2021", r2021)
 
-sys.stdout.log.close()
-sys.stdout = sys.stdout.terminal
-print(f"Done! Results saved to {log_file}")
+        print("\n" + "=" * 80)
+    finally:
+        logger.log.close()
+        sys.stdout = original_stdout
+
+    print(f"Done! Results saved to {log_file}")
