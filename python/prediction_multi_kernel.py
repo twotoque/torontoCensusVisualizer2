@@ -9,7 +9,7 @@ from typing import Literal, Tuple, Dict, Any
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import (
     RBF, WhiteKernel, ConstantKernel as C, 
-    Matern, RationalQuadratic
+    Matern, RationalQuadratic, DotProduct
 )
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
@@ -60,6 +60,16 @@ KERNEL_CONFIGS = {
             + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
         ),
     },
+
+    "linear": {
+        "name": "Linear",
+        "description": "Linear trend baseline; equivalent to Bayesian linear regression",
+        "builder": lambda: (
+            C(1.0, (1e-3, 1e6))
+            * DotProduct(sigma_0=0.0, sigma_0_bounds="fixed")
+            + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-2, 10.0))
+        ),
+    },
 }
 
 
@@ -69,7 +79,7 @@ def fit_gp_with_kernel(
     years: np.ndarray,
     values: np.ndarray,
     kernel_type: Literal[
-        "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", 
+        "rbf", "matern_3_2", "matern_5_2", "rational_quadratic", "linear"
     ] = "rbf",
 ) -> Tuple[GaussianProcessRegressor, float, float]:
     """

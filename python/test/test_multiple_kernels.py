@@ -19,7 +19,7 @@ class TeeLogger:
         self.terminal.flush()
         self.log.flush()
 
-log_file = "kernel_test_results2.txt"
+log_file = "kernel_test_results.txt"
 sys.stdout = TeeLogger(log_file)
 
 from data_loader import load_population_series
