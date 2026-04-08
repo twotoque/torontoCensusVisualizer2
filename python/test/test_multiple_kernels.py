@@ -26,7 +26,7 @@ BASE_PATH    = Path(__file__).resolve().parent.parent.parent / "data"
 WEIGHTS_PATH = BASE_PATH / "weights/158_to_140.parquet"
 
 
-def run_backtest(holdout_year: int, kernel_type: str, df, stable_list) -> list[dict]:
+def run_backtest(holdout_year: int, kernel_type: str, df: pd.DataFrame, stable_list: list[str]) -> list[dict]:
     """
     Train on census years < holdout_year, predict holdout_year.
     Uses raw weighted census values for both 2016 and 2021 (no DA anchor).
