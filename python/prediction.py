@@ -5,17 +5,19 @@ import numpy as np
 import pandas as pd
 from functools import lru_cache
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
 from permits import load_permits
+from sklearn.preprocessing import StandardScaler
 
 from pathlib import Path
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
+
 
 def normalize_neighbourhood(name: str) -> str:
     return name  
@@ -67,8 +69,6 @@ def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
         "residential_permits": 0.0, "demolition_permits": 0.0,
     }
 def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
-    from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
-    from sklearn.preprocessing import StandardScaler
 
     # 2021 anchor explicitly as a training point with high trust
     if true_2021_value is not None:

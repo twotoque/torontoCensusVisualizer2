@@ -1,0 +1,56 @@
+================================================================================
+Weighted Census Backtest  |  2016 vs 2021  |  fit_gp_with_kernel (no anchor)
+Both holdouts use raw weighted census actuals. No DA data.
+================================================================================
+
+────────────────────────────────────────────────────────────
+Kernel : RBF (Radial Basis Function)
+Desc   : Smooth, flexible, assumes similarity decreases with distance
+  Holdout 2016  (train ≤2011, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.0%  Mean MAPE=4.5%  Signed=-3.2%
+      SPLIT (36):  CI=58.3%  Median MAPE=7.5%  Mean MAPE=12.6%  Signed=-12.1%
+  Holdout 2021  (train ≤2016, weighted census actual):
+      STABLE (120):  CI=68.3%  Median MAPE=3.1%  Mean MAPE=4.4%  Signed=0.4%
+      SPLIT (36):  CI=5.6%  Median MAPE=96.4%  Mean MAPE=106.5%  Signed=106.4%
+
+────────────────────────────────────────────────────────────
+Kernel : Matérn ν=3/2
+Desc   : Less smooth than RBF, better for non-smooth data
+  Holdout 2016  (train ≤2011, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.2%  Mean MAPE=4.7%  Signed=-3.4%
+      SPLIT (36):  CI=66.7%  Median MAPE=10.2%  Mean MAPE=14.0%  Signed=-13.6%
+  Holdout 2021  (train ≤2016, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.4%  Mean MAPE=4.5%  Signed=-0.1%
+      SPLIT (36):  CI=5.6%  Median MAPE=92.4%  Mean MAPE=97.5%  Signed=97.2%
+
+────────────────────────────────────────────────────────────
+Kernel : Matern ν=5/2
+Desc   : Smoother than 3/2, good balance for real-world data
+  Holdout 2016  (train ≤2011, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.1%  Mean MAPE=4.6%  Signed=-3.3%
+      SPLIT (36):  CI=66.7%  Median MAPE=10.1%  Mean MAPE=13.3%  Signed=-12.8%
+  Holdout 2021  (train ≤2016, weighted census actual):
+      STABLE (120):  CI=69.2%  Median MAPE=3.4%  Mean MAPE=4.5%  Signed=0.1%
+      SPLIT (36):  CI=5.6%  Median MAPE=89.8%  Mean MAPE=100.2%  Signed=100.1%
+
+────────────────────────────────────────────────────────────
+Kernel : Rational Quadratic
+Desc   : Mixture of RBF kernels at different scales; good for data with multiple scales
+  Holdout 2016  (train ≤2011, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.0%  Mean MAPE=4.5%  Signed=-3.2%
+      SPLIT (36):  CI=58.3%  Median MAPE=7.5%  Mean MAPE=12.6%  Signed=-12.1%
+  Holdout 2021  (train ≤2016, weighted census actual):
+      STABLE (120):  CI=69.2%  Median MAPE=3.2%  Mean MAPE=4.3%  Signed=0.3%
+      SPLIT (36):  CI=5.6%  Median MAPE=95.8%  Mean MAPE=106.2%  Signed=106.2%
+
+────────────────────────────────────────────────────────────
+Kernel : Linear
+Desc   : Linear trend baseline; equivalent to Bayesian linear regression
+  Holdout 2016  (train ≤2011, weighted census actual):
+      STABLE (120):  CI=71.7%  Median MAPE=3.4%  Mean MAPE=5.3%  Signed=-3.6%
+      SPLIT (36):  CI=66.7%  Median MAPE=15.6%  Mean MAPE=18.8%  Signed=-18.4%
+  Holdout 2021  (train ≤2016, weighted census actual):
+      STABLE (120):  CI=74.2%  Median MAPE=3.8%  Mean MAPE=5.4%  Signed=-1.2%
+      SPLIT (36):  CI=38.9%  Median MAPE=65.5%  Mean MAPE=77.5%  Signed=77.0%
+
+================================================================================
