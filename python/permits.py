@@ -57,9 +57,6 @@ def load_permit_features() -> pd.DataFrame:
 
     agg["net_units"] = agg["units_created"] - agg["units_lost"]
     agg = agg.set_index(["neighbourhood", "year"])
-    print(f"Loaded permit features for {len(agg)} (neighbourhood, year) combinations.")
-    print(agg.head())
-    print(agg[0:20])
     return agg
 
 
