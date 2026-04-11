@@ -15,9 +15,9 @@ from sklearn.preprocessing import StandardScaler
 
 from pathlib import Path
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
+split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
-SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
-
+SPLIT_NEIGHBOURHOOD_LIST = old_weights[ old_weights['AREA_NAME_1'].isin(split_old)]['AREA_NAME_2'].unique().tolist()
 
 def normalize_neighbourhood(name: str) -> str:
     return name  
@@ -135,12 +135,31 @@ def forecast(
 
     shap_values = _compute_shap(pop_df, neighbourhood, years, values)
 
+
+    # GBM was trained on historical data so we use the trend delta it implies
+    # vs the actual last census value as a correction signal
+    gp_last = float(values[-1])
+    gbm_last = shap_values["gbm_last"]
+    permit_correction = gbm_last - gp_last  # how much permits suggest deviation from raw trend
+
+    corrected_forecast = {
+        int(y): {
+            "mean":  round(float(m) + permit_correction, 1),
+            "lower": round(float(m - 1.96 * s) + permit_correction, 1),
+            "upper": round(float(m + 1.96 * s) + permit_correction, 1),
+        }
+        for y, m, s in zip(forecast_arr, y_pred, y_std)
+        if int(y) in forecast_years
+    }
+
+    print(SPLIT_NEIGHBOURHOOD_LIST)
     return {
         "neighbourhood": neighbourhood,
         "historical": {
             int(y): float(v) for y, v in zip(years, values)
         },
-        "forecast": {
+        "forecast": corrected_forecast,
+        "forecast_gp_only": {
             int(y): {
                 "mean":  round(float(m), 1),
                 "lower": round(float(m - 1.96 * s), 1),
@@ -155,6 +174,7 @@ def forecast(
             "lower":  list(values.round(1))   + [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
             "upper":  list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
         },
+        "is_split": neighbourhood in SPLIT_NEIGHBOURHOOD_LIST,  # <-- add this
         "shap": shap_values,
     }
 
@@ -225,6 +245,7 @@ def _compute_shap(
 
     explainer   = shap.TreeExplainer(gbm)
     shap_matrix = explainer.shap_values(X_target)
+    gbm_predictions = gbm.predict(X_target)
 
     return {
         "features": features,
@@ -233,6 +254,8 @@ def _compute_shap(
             {f: round(float(shap_matrix[i][j]), 2) for j, f in enumerate(features)}
             for i in range(len(years))
         ],
+        "gbm_predictions": {int(y): round(float(p), 1) for y, p in zip(years, gbm_predictions)},
+        "gbm_last": round(float(gbm_predictions[-1]), 1),  # most recent year's prediction
     }
 
 

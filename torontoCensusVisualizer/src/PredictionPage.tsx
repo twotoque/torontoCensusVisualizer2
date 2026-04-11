@@ -9,11 +9,12 @@ interface ForecastResult {
   neighbourhood: string;
   historical:    Record<number, number>;
   forecast:      Record<number, { mean: number; lower: number; upper: number }>;
+  forecast_gp_only: Record<number, { mean: number; lower: number; upper: number }>;
   gp_full:       { years: number[]; mean: number[]; lower: number[]; upper: number[] };
   shap:          { features: string[]; years: number[]; values: Record<string, number>[] };
+  is_split?:     boolean;
   error?:        string;
 }
-
 interface PredictionPageProps {
   t: Tokens;
 }
@@ -27,6 +28,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
   const [loading, setLoading]                 = useState(false);
   const [forecastYears, setForecastYears]     = useState([2026, 2031]);
   const [shapNeigh, setShapNeigh] = useState<string | null>(null);
+  const [usePermitCorrection, setUsePermitCorrection] = useState(true);
 
   const card: React.CSSProperties = {
     background: t.surface, border: `1px solid ${t.border}`,
@@ -241,6 +243,24 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
 
           {traces.length > 0 && (
             <div style={card}>
+
+              {selected.some(n => results[n]?.is_split) && (
+                <div style={{
+                  background: "#f59e0b22", border: "1px solid #f59e0b66",
+                  borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#b45309",
+                  display: "flex", gap: 8, alignItems: "flex-start",
+                }}>
+                  <span style={{ fontSize: 14 }}>⚠️</span>
+                  <div>
+                    <strong>Boundary change detected</strong> —{" "}
+                    {selected.filter(n => results[n]?.is_split).join(", ")}{" "}
+                    {selected.filter(n => results[n]?.is_split).length === 1 ? "was" : "were"} affected
+                    by neighbourhood boundary splits between census periods.
+                    Historical values may not be directly comparable across all years.
+                  </div>
+                </div>
+              )}
+
               <div style={cardLabel}>Population Forecast with 95% Confidence Interval</div>
               <Plot
                 data={traces}
@@ -267,6 +287,22 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                 <span>Neighbourhood</span>
                 {forecastYears.map(y => <span key={y}>{y}</span>)}
               </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: t.textMuted }}>Forecast mode:</span>
+                {["Permit + GP", "GP only"].map((label, i) => (
+                  <button
+                    key={label}
+                    onClick={() => setUsePermitCorrection(i === 0)}
+                    style={{
+                      padding: "4px 10px", borderRadius: 5, border: "none", fontSize: 11,
+                      background: usePermitCorrection === (i === 0) ? t.accent : t.surfaceAlt,
+                      color:      usePermitCorrection === (i === 0) ? "#fff"   : t.textMuted,
+                      cursor: "pointer",
+                    }}
+                  >{label}</button>
+                ))}
+              </div>
+
               {selected.map((neigh, ci) => {
                 const r = results[neigh];
                 if (!r || r.error) return null;
@@ -274,7 +310,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                   <div key={neigh} style={{ display: "grid", gridTemplateColumns: `2fr ${forecastYears.map(() => "1fr").join(" ")}`, padding: "7px 0", borderBottom: `1px solid ${t.border}`, fontSize: 12 }}>
                     <div style={{ fontWeight: 600, color: COLORS[ci % COLORS.length] }}>{neigh}</div>
                     {forecastYears.map(y => {
-                      const f = r.forecast[y];
+                      const f = (usePermitCorrection ? r.forecast : r.forecast_gp_only)?.[y];
                       return f ? (
                         <div key={y}>
                           <div style={{ color: t.text }}>{f.mean.toLocaleString()}</div>
