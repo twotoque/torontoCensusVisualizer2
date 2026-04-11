@@ -140,9 +140,8 @@ def fit_gp(years: np.ndarray, values: np.ndarray):
 
     X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
 
-    kernel = RBF(length_scale=0.3, length_scale_bounds=(0.01, 10))  + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 1))
-
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5, normalize_y=True)
+    kernel = (RBF(length_scale=0.5, length_scale_bounds="fixed") + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 0.1)) )
+    gp = GaussianProcessRegressor( kernel=kernel, alpha=1e-6, n_restarts_optimizer=5, normalize_y=True,)
     gp.fit(X_norm, y)
     return gp, X.min(), X.max()
 
@@ -171,8 +170,13 @@ def forecast(
 
     gp, y_min, y_max = fit_gp(years, values)
 
-    all_years = np.array(sorted(years.tolist() + forecast_years), dtype=float)
-    X_norm = ((all_years - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
+    '''
+        all_years = np.array(sorted(years.tolist() + forecast_years), dtype=float)
+        X_norm = ((all_years - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
+        y_pred, y_std = gp.predict(X_norm, return_std=True)
+    '''
+    forecast_arr = np.array(forecast_years, dtype=float)
+    X_norm = ((forecast_arr - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
     y_pred, y_std = gp.predict(X_norm, return_std=True)
 
     shap_values = _compute_shap(pop_df, neighbourhood, years, values)
@@ -188,14 +192,14 @@ def forecast(
                 "lower": round(float(m - 1.96 * s), 1),
                 "upper": round(float(m + 1.96 * s), 1),
             }
-            for y, m, s in zip(all_years, y_pred, y_std)
+            for y, m, s in zip(forecast_arr, y_pred, y_std)
             if int(y) in forecast_years
         },
         "gp_full": {
-            "years":  [int(y) for y in all_years],
-            "mean":   [round(float(m), 1) for m in y_pred],
-            "lower":  [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
-            "upper":  [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
+            "years":  [int(y) for y in years] + forecast_years,
+            "mean":   list(values.round(1))   + [round(float(m), 1) for m in y_pred],
+            "lower":  list(values.round(1))   + [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
+            "upper":  list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
         },
         "shap": shap_values,
     }
