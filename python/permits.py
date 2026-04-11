@@ -57,4 +57,28 @@ def load_permit_features() -> pd.DataFrame:
 
     agg["net_units"] = agg["units_created"] - agg["units_lost"]
     agg = agg.set_index(["neighbourhood", "year"])
+    print(f"Loaded permit features for {len(agg)} (neighbourhood, year) combinations.")
+    print(agg.head())
+    print(agg[0:20])
     return agg
+
+
+def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
+    permit_df = load_permit_features()
+    key = (neighbourhood, int(year))
+    if key in permit_df.index:
+        row = permit_df.loc[key]
+        return {
+            "permit_count":        float(row["permit_count"]),
+            "units_created":       float(row["units_created"]),
+            "units_lost":          float(row["units_lost"]),
+            "net_units":           float(row["net_units"]),
+            "total_cost":          float(row["total_cost"]),
+            "residential_permits": float(row["residential_permits"]),
+            "demolition_permits":  float(row["demolition_permits"]),
+        }
+    return {
+        "permit_count": 0.0, "units_created": 0.0, "units_lost": 0.0,
+        "net_units": 0.0, "total_cost": 0.0,
+        "residential_permits": 0.0, "demolition_permits": 0.0,
+    }

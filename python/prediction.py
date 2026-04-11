@@ -10,7 +10,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
-from permits import load_permits
+from permits import _get_permit_features_for
 from sklearn.preprocessing import StandardScaler
 
 from pathlib import Path
@@ -22,52 +22,6 @@ SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_
 def normalize_neighbourhood(name: str) -> str:
     return name  
 
-@lru_cache(maxsize=1)
-def load_permit_features() -> pd.DataFrame:
-    """
-    Aggregate permit data per (neighbourhood, year) into features for SHAP.
-    Uses WARD_GRID as a neighbourhood proxy since permits don't have neighbourhood names.
-    Returns a DataFrame indexed by (neighbourhood, year).
-    """
-    df = load_permits()
-
-    df = df[df["APPLICATION_DATE"].notna()].copy()
-    df["year"] = df["APPLICATION_DATE"].dt.year
-
-    agg = df.groupby(["WARD_GRID", "year"]).agg(
-        permit_count        = ("PERMIT_NUM",            "count"),
-        units_created       = ("DWELLING_UNITS_CREATED","sum"),
-        units_lost          = ("DWELLING_UNITS_LOST",   "sum"),
-        total_cost          = ("EST_CONST_COST",        "sum"),
-        residential_permits = ("RESIDENTIAL",           "sum"),
-        demolition_permits  = ("DEMOLITION",            "sum"),
-    ).reset_index()
-
-    agg["net_units"] = agg["units_created"] - agg["units_lost"]
-
-    agg = agg.set_index(["WARD_GRID", "year"])
-    return agg
-
-
-def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
-    permit_df = load_permit_features()
-    key = (neighbourhood, int(year))
-    if key in permit_df.index:
-        row = permit_df.loc[key]
-        return {
-            "permit_count":        float(row["permit_count"]),
-            "units_created":       float(row["units_created"]),
-            "units_lost":          float(row["units_lost"]),
-            "net_units":           float(row["net_units"]),
-            "total_cost":          float(row["total_cost"]),
-            "residential_permits": float(row["residential_permits"]),
-            "demolition_permits":  float(row["demolition_permits"]),
-        }
-    return {
-        "permit_count": 0.0, "units_created": 0.0, "units_lost": 0.0,
-        "net_units": 0.0, "total_cost": 0.0,
-        "residential_permits": 0.0, "demolition_permits": 0.0,
-    }
 def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
 
     # 2021 anchor explicitly as a training point with high trust
@@ -218,7 +172,6 @@ def _compute_shap(
     target_neighbourhood: str,
     years: np.ndarray,
     values: np.ndarray,
-    ward: str | None = None,
 ) -> dict:
     """
     Train a GBM across all neighbourhoods using year + population features,
@@ -244,10 +197,7 @@ def _compute_shap(
             # Permit features are attached via the target ward only;
             # other neighbourhoods get zeros (we don't have their ward mappings here).
             if use_permits:
-                permit_feat = _get_permit_features_for(neigh, y) \
-                    if neigh == target_neighbourhood \
-                    else {f: 0.0 for f in PERMIT_FEATURES}
-                entry.update(permit_feat)
+                entry.update(_get_permit_features_for(neigh, y))
             rows.append(entry)
 
     train_df = pd.DataFrame(rows)
@@ -268,7 +218,7 @@ def _compute_shap(
             "growth_prev": (v - values[i-1]) / (values[i-1] + 1e-8) if i > 0 else 0.0,
         }
         if use_permits:
-            entry.update(_get_permit_features_for(ward, y))
+            entry.update(_get_permit_features_for(target_neighbourhood, y))
         target_rows.append(entry)
 
     X_target = pd.DataFrame(target_rows)[features].values
