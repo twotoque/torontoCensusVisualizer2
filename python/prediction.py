@@ -29,10 +29,14 @@ def get_predecessor_neighbourhoods(neighbourhood: str) -> list[dict]:
     siblings = old_weights[
         old_weights['AREA_NAME_1'].isin(old_sources) &
         (old_weights['weight'] > 0.01)
-    ][['AREA_NAME_2', 'weight']].drop_duplicates()
+    ][['AREA_NAME_1', 'AREA_NAME_2', 'weight']].drop_duplicates()
 
     return [
-        {"name": row["AREA_NAME_2"], "weight": round(float(row["weight"]), 3)}
+        {
+            "name": row["AREA_NAME_2"],
+            "weight": round(float(row["weight"]), 3),
+            "source_neighbourhood": row["AREA_NAME_1"],  # <-- old 158 name
+        }
         for _, row in siblings.iterrows()
     ]
 
@@ -193,12 +197,21 @@ def forecast(
     gp_upper  = list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)]
 
     if is_split:
-        cutoff = next((i for i, y in enumerate(gp_years) if y >= 2021), 0)
-        gp_years  = gp_years[cutoff:]
-        gp_mean   = gp_mean[cutoff:]
-        gp_lower  = gp_lower[cutoff:]
-        gp_upper  = gp_upper[cutoff:]
-        
+            # For split neighbourhoods, only show GP uncertainty bands from 2021 onward.
+            # Pre-2021 points use the actual census values with no uncertainty band.
+            historical_years  = [int(y) for y in years]
+            historical_values = list(values.round(1))
+
+            forecast_only_years  = [y for y in gp_years  if y not in historical_years]
+            forecast_only_mean   = [m for y, m in zip(gp_years, gp_mean)  if y not in historical_years]
+            forecast_only_lower  = [l for y, l in zip(gp_years, gp_lower) if y not in historical_years]
+            forecast_only_upper  = [u for y, u in zip(gp_years, gp_upper) if y not in historical_years]
+
+            gp_years  = historical_years  + forecast_only_years
+            gp_mean   = historical_values + forecast_only_mean
+            gp_lower  = historical_values + forecast_only_lower 
+            gp_upper  = historical_values + forecast_only_upper
+            
 
     return {
         "neighbourhood": neighbourhood,

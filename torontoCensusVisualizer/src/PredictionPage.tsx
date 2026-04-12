@@ -80,7 +80,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
     n.toLowerCase().includes(searchInput.toLowerCase()) && !selected.includes(n)
   );
 
-  // Build Plotly traces for all selected neighbourhoods
+// Build Plotly traces for all selected neighbourhoods
   const traces: any[] = [];
   const COLORS = ["#4C9BE8", "#E8834C", "#4CE87A", "#E84C4C", "#B44CE8"];
 
@@ -89,98 +89,96 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
     if (!r || r.error) return;
     const color = COLORS[ci % COLORS.length];
 
-    // Historical points - only show from 2021 for split neighbourhoods
-    const histYears  = Object.keys(r.historical).map(Number).sort()
+    const histYears  = Object.keys(r.historical).map(Number).sort();
     const histValues = histYears.map(y => r.historical[y]);
 
-    traces.push({
-        x: histYears, y: histValues,
-        mode: "markers+lines", name: `${neigh} (historical)`,
-        line: { color, width: 2 },
-        marker: { size: 6, color },
-    });
-
-    // Predecessor lines — shown pre-2021 as dotted with weight in legend
     if (r.is_split) {
-    // Pre-2021 portion — lighter to indicate old boundary
-    const preYears  = histYears.filter(y => y <= 2021);
-    const preValues = preYears.map(y => r.historical[y]);
-    traces.push({
+      // Pre-2021 portion of this neighbourhood — dotted, faded
+      const preYears  = histYears.filter(y => y <= 2021);
+      const preValues = preYears.map(y => r.historical[y]);
+      traces.push({
         x: preYears, y: preValues,
         mode: "lines+markers", name: `${neigh} (pre-split)`,
         line: { color, width: 1.5, dash: "dot" },
         marker: { size: 4, color },
         opacity: 0.4,
-    });
+      });
 
-    // 2021 onward — full solid line
-    const postYears  = histYears.filter(y => y >= 2021);
-    const postValues = postYears.map(y => r.historical[y]);
-    traces.push({
+      // 2021 onward — solid
+      const postYears  = histYears.filter(y => y >= 2021);
+      const postValues = postYears.map(y => r.historical[y]);
+      traces.push({
         x: postYears, y: postValues,
         mode: "markers+lines", name: `${neigh} (historical)`,
         line: { color, width: 2 },
         marker: { size: 6, color },
-    });
-} else {
-    traces.push({
+      });
+
+      // Predecessor siblings — weighted, dashdot, up to 2021
+      if (r.predecessor_series) {
+        Object.entries(r.predecessor_series).forEach(([predName, pred]: [string, any]) => {
+          const predYears  = Object.keys(pred.historical).map(Number).sort()
+            .filter(y => y <= 2021);
+          const predValues = predYears.map(y => pred.historical[y]);
+          const pct        = Math.round(pred.weight * 100);
+          const sourceName = r.predecessors?.find((p: any) => p.name === predName)?.source_neighbourhood;
+          const label      = sourceName
+            ? `${predName} (formed from ${sourceName}, ${pct}%)`
+            : `${predName} (${pct}%)`;
+
+          traces.push({
+            x: predYears, y: predValues,
+            mode: "lines+markers",
+            name: label,
+            line: { color, width: 1.5, dash: "dashdot" },
+            marker: { size: 4, symbol: "diamond", color },
+            opacity: 0.6,
+          });
+        });
+      }
+    } else {
+      // Stable neighbourhood — just show all historical
+      traces.push({
         x: histYears, y: histValues,
         mode: "markers+lines", name: `${neigh} (historical)`,
         line: { color, width: 2 },
         marker: { size: 6, color },
-    });
-}
+      });
+    }
 
-// Predecessor siblings — full history up to 2021
-if (r.is_split && r.predecessor_series) {
-    Object.entries(r.predecessor_series).forEach(([predName, pred]) => {
-        const predYears  = Object.keys(pred.historical).map(Number).sort()
-            .filter(y => y <= 2021);
-        const predValues = predYears.map(y => pred.historical[y]);
-        const pct = Math.round(pred.weight * 100);
-        traces.push({
-            x: predYears, y: predValues,
-            mode: "lines+markers",
-            name: `${predName} (${pct}%)`,
-            line: { color, width: 1.5, dash: "dashdot" },
-            marker: { size: 4, color },
-            opacity: 0.6,
-        });
-    });
-}
-    // GP forecast line and CI band unchanged
+    // GP forecast line
     traces.push({
-        x: r.gp_full.years, y: r.gp_full.mean,
-        mode: "lines", name: `${neigh} (forecast)`,
-        line: { color, width: 2, dash: "dot" },
+      x: r.gp_full.years, y: r.gp_full.mean,
+      mode: "lines", name: `${neigh} (forecast)`,
+      line: { color, width: 2, dash: "dot" },
     });
 
+    // 95% CI band
     traces.push({
-        x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
-        y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
-        fill: "toself", fillcolor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
-        line: { color: "transparent" },
-        name: `${neigh} 95% CI`,
-        showlegend: false, type: "scatter",
+      x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
+      y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
+      fill: "toself", fillcolor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
+      line: { color: "transparent" },
+      name: `${neigh} 95% CI`,
+      showlegend: false, type: "scatter",
     });
-});
+  });
 
   // SHAP bar for first selected neighbourhood
-    const activeShapNeigh = shapNeigh ?? selected[0];
-    const shap = activeShapNeigh && results[activeShapNeigh]?.shap;
-    const shapTraces: any[] = shap ? shap.features.map(f => ({
+  const activeShapNeigh = shapNeigh ?? selected[0];
+  const shap = activeShapNeigh && results[activeShapNeigh]?.shap;
+  const shapTraces: any[] = shap ? shap.features.map(f => ({
     x: shap.years,
     y: shap.values.map(v => v[f]),
     type: "bar", name: f,
-    })) : [];
-
+  })) : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: t.bg, overflow: "hidden" }}>
       {/* Header */}
       <div style={{ padding: "12px 16px", background: t.surface, borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Population Forecast</div>
-        <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Gaussian Process model with SHAP explanations</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Population Prediction</div>
+        <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Gaussian Process model with SHAP explanations. These results should be viewed as <b>experimental</b> and may not be accurate.</div>
       </div>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", gap: 0 }}>
