@@ -9,6 +9,13 @@ import { type ForecastResult } from "../components/prediction/types";
 
 const API = "/api";
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export const PredictionPage: React.FC = () => {
   const { setSlot } = useSearchSlot();
   const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
@@ -146,7 +153,7 @@ export const PredictionPage: React.FC = () => {
       x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
       y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
       fill: "toself",
-      fillcolor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
+      fillcolor: hexToRgba(color, 0.1),
       line: { color: "transparent" },
       name: `${neigh} 95% CI`,
       showlegend: false,
