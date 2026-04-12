@@ -1,65 +1,45 @@
-// App.tsx
-// Root component. Reads the search slot from context and passes it to TopBar.
-// No prop drilling — pages inject their own search via useSearchSlot().
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import { tokens, type Theme } from "./colours";
-import { TopBar } from "./Topbar";
-import { Sidebar } from "./Sidebar";
-import { ChatPage } from "./ChatPage";
-import { CensusPage } from "./CensusPage";
+import { TopBar } from "./components/layout/TopBar";
+import { Sidebar } from "./components/layout/Sidebar";
+import { ChatPage } from "./pages/ChatPage";
+import { CensusPage } from "./pages/CensusPage";
+import { PredictionPage } from "./pages/PredictionPage";
 import { useSearchSlot } from "./SearchSlotContext";
-import { PredictionPage } from "./PredictionPage";
+import {
+  type Theme,
+  applyThemeToDocument,
+  detectSystemTheme,
+  getStoredTheme,
+  persistTheme,
+} from "./colours";
 
 export default function App() {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem("theme") as Theme) || "light"
-  );
-  const t = tokens[theme];
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? detectSystemTheme());
   const { slot } = useSearchSlot();
 
+  useEffect(() => {
+    applyThemeToDocument(theme);
+    persistTheme(theme);
+  }, [theme]);
+
   function toggleTheme() {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
+    setTheme(prev => (prev === "light" ? "dark" : "light"));
   }
 
   return (
-    <div style={{
-      display: "flex", flexDirection: "column",
-      width: "100vw", height: "100vh",
-      background: t.bg, color: t.text,
-      fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
-      transition: "background 0.2s, color 0.2s",
-    }}>
-      {/* TopBar reads slot from context via App — no child-to-parent state */}
-      <TopBar t={t} theme={theme} onToggle={toggleTheme} searchSlot={slot} />
-
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Sidebar t={t} />
-
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div className="flex h-screen w-screen flex-col bg-[var(--bg)] font-['DM_Sans','Helvetica_Neue',sans-serif] text-[var(--text)] transition-colors">
+      <TopBar theme={theme} onToggle={toggleTheme} searchSlot={slot} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex flex-1 flex-col overflow-hidden">
           <Routes>
-            <Route path="/"       element={<ChatPage   t={t} />} />
-            <Route path="/census" element={<CensusPage t={t} />} />
-            <Route path="/prediction" element={<PredictionPage t={t} />} />
+            <Route path="/" element={<ChatPage />} />
+            <Route path="/census" element={<CensusPage />} />
+            <Route path="/prediction" element={<PredictionPage />} />
           </Routes>
         </main>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { overflow: hidden; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${t.border}; border-radius: 3px; }
-        @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-5px); }
-        }
-      `}</style>
     </div>
   );
 }
