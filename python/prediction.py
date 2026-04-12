@@ -10,64 +10,36 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
-from permits import load_permits
-from sklearn.preprocessing import StandardScaler
-
-from pathlib import Path
+from permits import _get_permit_features_for
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
+split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
-SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
+SPLIT_NEIGHBOURHOOD_LIST = old_weights[ old_weights['AREA_NAME_1'].isin(split_old)]['AREA_NAME_2'].unique().tolist()
 
+def get_predecessor_neighbourhoods(neighbourhood: str) -> list[dict]:
+    """Find all 140-neighbourhoods that came from the same old 158 source."""
+    old_sources = old_weights[
+        (old_weights['AREA_NAME_2'] == neighbourhood) & 
+        (old_weights['weight'] > 0.01)
+    ]['AREA_NAME_1'].unique()
+
+    siblings = old_weights[
+        old_weights['AREA_NAME_1'].isin(old_sources) &
+        (old_weights['weight'] > 0.01)
+    ][['AREA_NAME_1', 'AREA_NAME_2', 'weight']].drop_duplicates()
+
+    return [
+        {
+            "name": row["AREA_NAME_2"],
+            "weight": round(float(row["weight"]), 3),
+            "source_neighbourhood": row["AREA_NAME_1"],  # <-- old 158 name
+        }
+        for _, row in siblings.iterrows()
+    ]
 
 def normalize_neighbourhood(name: str) -> str:
     return name  
 
-@lru_cache(maxsize=1)
-def load_permit_features() -> pd.DataFrame:
-    """
-    Aggregate permit data per (neighbourhood, year) into features for SHAP.
-    Uses WARD_GRID as a neighbourhood proxy since permits don't have neighbourhood names.
-    Returns a DataFrame indexed by (neighbourhood, year).
-    """
-    df = load_permits()
-
-    df = df[df["APPLICATION_DATE"].notna()].copy()
-    df["year"] = df["APPLICATION_DATE"].dt.year
-
-    agg = df.groupby(["WARD_GRID", "year"]).agg(
-        permit_count        = ("PERMIT_NUM",            "count"),
-        units_created       = ("DWELLING_UNITS_CREATED","sum"),
-        units_lost          = ("DWELLING_UNITS_LOST",   "sum"),
-        total_cost          = ("EST_CONST_COST",        "sum"),
-        residential_permits = ("RESIDENTIAL",           "sum"),
-        demolition_permits  = ("DEMOLITION",            "sum"),
-    ).reset_index()
-
-    agg["net_units"] = agg["units_created"] - agg["units_lost"]
-
-    agg = agg.set_index(["WARD_GRID", "year"])
-    return agg
-
-
-def _get_permit_features_for(neighbourhood: str, year: float) -> dict:
-    permit_df = load_permit_features()
-    key = (neighbourhood, int(year))
-    if key in permit_df.index:
-        row = permit_df.loc[key]
-        return {
-            "permit_count":        float(row["permit_count"]),
-            "units_created":       float(row["units_created"]),
-            "units_lost":          float(row["units_lost"]),
-            "net_units":           float(row["net_units"]),
-            "total_cost":          float(row["total_cost"]),
-            "residential_permits": float(row["residential_permits"]),
-            "demolition_permits":  float(row["demolition_permits"]),
-        }
-    return {
-        "permit_count": 0.0, "units_created": 0.0, "units_lost": 0.0,
-        "net_units": 0.0, "total_cost": 0.0,
-        "residential_permits": 0.0, "demolition_permits": 0.0,
-    }
 def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
 
     # 2021 anchor explicitly as a training point with high trust
@@ -140,12 +112,24 @@ def fit_gp(years: np.ndarray, values: np.ndarray):
 
     X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
 
-    kernel = RBF(length_scale=0.3, length_scale_bounds=(0.01, 10))  + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 1))
-
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5, normalize_y=True)
+    kernel = (RBF(length_scale=0.5, length_scale_bounds="fixed") + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 0.1)) )
+    gp = GaussianProcessRegressor( kernel=kernel, alpha=1e-6, n_restarts_optimizer=5, normalize_y=True,)
     gp.fit(X_norm, y)
     return gp, X.min(), X.max()
 
+def get_predecessor_series(predecessors: list[dict]) -> dict:
+    """Load historical population for each predecessor neighbourhood."""
+    pop_df = load_population_series()
+    result = {}
+    for p in predecessors:
+        name = p["name"]
+        if name in pop_df.index:
+            row = pop_df.loc[name].dropna()
+            result[name] = {
+                "weight": p["weight"],
+                "historical": {int(y): float(v) for y, v in row.items()}
+            }
+    return result
 
 def forecast(
     neighbourhood: str,
@@ -171,33 +155,86 @@ def forecast(
 
     gp, y_min, y_max = fit_gp(years, values)
 
-    all_years = np.array(sorted(years.tolist() + forecast_years), dtype=float)
-    X_norm = ((all_years - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
+    '''
+        all_years = np.array(sorted(years.tolist() + forecast_years), dtype=float)
+        X_norm = ((all_years - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
+        y_pred, y_std = gp.predict(X_norm, return_std=True)
+    '''
+    forecast_arr = np.array(forecast_years, dtype=float)
+    X_norm = ((forecast_arr - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
     y_pred, y_std = gp.predict(X_norm, return_std=True)
 
     shap_values = _compute_shap(pop_df, neighbourhood, years, values)
+
+
+    # GBM was trained on historical data so we use the trend delta it implies
+    # vs the actual last census value as a correction signal
+    gp_last = float(values[-1])
+    gbm_last = shap_values["gbm_last"]
+    permit_correction = gbm_last - gp_last  # how much permits suggest deviation from raw trend
+
+    corrected_forecast = {
+        int(y): {
+            "mean":  round(float(m) + permit_correction, 1),
+            "lower": round(float(m - 1.96 * s) + permit_correction, 1),
+            "upper": round(float(m + 1.96 * s) + permit_correction, 1),
+        }
+        for y, m, s in zip(forecast_arr, y_pred, y_std)
+        if int(y) in forecast_years
+    }
+
+    predecessors = get_predecessor_neighbourhoods(neighbourhood)
+    
+
+    is_split = neighbourhood in SPLIT_NEIGHBOURHOOD_LIST
+
+    gp_years  = [int(y) for y in years] + forecast_years
+    gp_mean   = list(values.round(1))   + [round(float(m), 1) for m in y_pred]
+    gp_lower  = list(values.round(1))   + [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)]
+    gp_upper  = list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)]
+
+    if is_split:
+            # For split neighbourhoods, only show GP uncertainty bands from 2021 onward.
+            # Pre-2021 points use the actual census values with no uncertainty band.
+            historical_years  = [int(y) for y in years]
+            historical_values = list(values.round(1))
+
+            forecast_only_years  = [y for y in gp_years  if y not in historical_years]
+            forecast_only_mean   = [m for y, m in zip(gp_years, gp_mean)  if y not in historical_years]
+            forecast_only_lower  = [l for y, l in zip(gp_years, gp_lower) if y not in historical_years]
+            forecast_only_upper  = [u for y, u in zip(gp_years, gp_upper) if y not in historical_years]
+
+            gp_years  = historical_years  + forecast_only_years
+            gp_mean   = historical_values + forecast_only_mean
+            gp_lower  = historical_values + forecast_only_lower 
+            gp_upper  = historical_values + forecast_only_upper
+            
 
     return {
         "neighbourhood": neighbourhood,
         "historical": {
             int(y): float(v) for y, v in zip(years, values)
         },
-        "forecast": {
+        "forecast": corrected_forecast,
+        "forecast_gp_only": {
             int(y): {
                 "mean":  round(float(m), 1),
                 "lower": round(float(m - 1.96 * s), 1),
                 "upper": round(float(m + 1.96 * s), 1),
             }
-            for y, m, s in zip(all_years, y_pred, y_std)
+            for y, m, s in zip(forecast_arr, y_pred, y_std)
             if int(y) in forecast_years
         },
-        "gp_full": {
-            "years":  [int(y) for y in all_years],
-            "mean":   [round(float(m), 1) for m in y_pred],
-            "lower":  [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
-            "upper":  [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
+       "gp_full": {
+        "years": gp_years,
+        "mean":  gp_mean,
+        "lower": gp_lower,
+        "upper": gp_upper,
         },
+        "is_split": neighbourhood in SPLIT_NEIGHBOURHOOD_LIST, 
         "shap": shap_values,
+        "predecessors": predecessors, 
+        "predecessor_series": get_predecessor_series(predecessors),
     }
 
 
@@ -214,7 +251,6 @@ def _compute_shap(
     target_neighbourhood: str,
     years: np.ndarray,
     values: np.ndarray,
-    ward: str | None = None,
 ) -> dict:
     """
     Train a GBM across all neighbourhoods using year + population features,
@@ -237,13 +273,10 @@ def _compute_shap(
                 "growth_prev": (v - v_arr[i-1]) / (v_arr[i-1] + 1e-8) if i > 0 else 0.0,
                 "population":  v,
             }
-            # Permit features are attached via the target ward only;
-            # other neighbourhoods get zeros (we don't have their ward mappings here).
+            # Permit features are looked up for each neighbourhood-year pair
+            # via `_get_permit_features_for(neigh, y)` when enabled.
             if use_permits:
-                permit_feat = _get_permit_features_for(neigh, y) \
-                    if neigh == target_neighbourhood \
-                    else {f: 0.0 for f in PERMIT_FEATURES}
-                entry.update(permit_feat)
+                entry.update(_get_permit_features_for(neigh, y))
             rows.append(entry)
 
     train_df = pd.DataFrame(rows)
@@ -264,13 +297,14 @@ def _compute_shap(
             "growth_prev": (v - values[i-1]) / (values[i-1] + 1e-8) if i > 0 else 0.0,
         }
         if use_permits:
-            entry.update(_get_permit_features_for(ward, y))
+            entry.update(_get_permit_features_for(target_neighbourhood, y))
         target_rows.append(entry)
 
     X_target = pd.DataFrame(target_rows)[features].values
 
     explainer   = shap.TreeExplainer(gbm)
     shap_matrix = explainer.shap_values(X_target)
+    gbm_predictions = gbm.predict(X_target)
 
     return {
         "features": features,
@@ -279,6 +313,8 @@ def _compute_shap(
             {f: round(float(shap_matrix[i][j]), 2) for j, f in enumerate(features)}
             for i in range(len(years))
         ],
+        "gbm_predictions": {int(y): round(float(p), 1) for y, p in zip(years, gbm_predictions)},
+        "gbm_last": round(float(gbm_predictions[-1]), 1),  # most recent year's prediction
     }
 
 

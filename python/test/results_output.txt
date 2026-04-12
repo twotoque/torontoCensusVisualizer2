@@ -1,0 +1,21 @@
+GP Prediction Results Summary
+
+============================================================
+Parquet: baseline  |  Holdout: 2016
+  STABLE (n=120):  CI=69.2%  Median MAPE=3.1%
+  SPLIT  (n=36):  CI=52.8%  Median MAPE=8.4%
+
+============================================================
+Parquet: baseline  |  Holdout: 2021
+  STABLE (n=120):  CI=65.0%  Median MAPE=3.5%
+  SPLIT  (n=36):  CI=8.3%  Median MAPE=89.1%
+
+============================================================
+Parquet: permit_weighted  |  Holdout: 2016
+  STABLE (n=120):  CI=69.2%  Median MAPE=3.1%
+  SPLIT  (n=36):  CI=52.8%  Median MAPE=8.4%
+
+============================================================
+Parquet: permit_weighted  |  Holdout: 2021
+  STABLE (n=120):  CI=64.2%  Median MAPE=3.2%
+  SPLIT  (n=36):  CI=8.3%  Median MAPE=89.1%

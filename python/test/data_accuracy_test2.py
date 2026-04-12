@@ -25,7 +25,7 @@ SPLIT neighbourhoods:
 BASE_PATH = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data")
 DA_COUNTS_PATH = BASE_PATH / "processed_2021_da_counts.csv"
 DA_MAP_PATH = BASE_PATH / "weights/da_to_neighbourhood_mapping 2.parquet"
-WEIGHTS_PATH = BASE_PATH / "weights/158_to_140.parquet"
+WEIGHTS_PATH = BASE_PATH / "weights/140_to_158_permit_weighted.parquet"
 
 da_counts = pd.read_csv(DA_COUNTS_PATH)
 da_map = pd.read_parquet(DA_MAP_PATH)
