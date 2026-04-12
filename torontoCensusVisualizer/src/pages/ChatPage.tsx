@@ -10,7 +10,7 @@ import { type Message } from "../components/chat/types";
 const API = "/api";
 
 function uid() {
-  return Math.random().toString(36).slice(2);
+  return crypto.randomUUID();
 }
 
 export const ChatPage: React.FC = () => {
