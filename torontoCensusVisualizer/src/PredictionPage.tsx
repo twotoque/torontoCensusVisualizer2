@@ -294,7 +294,8 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
           )}
 
           {traces.length > 0 && (
-            <div style={card}>
+            <>
+            <div>
 
               {selected.some(n => results[n]?.is_split) && (
                 <div style={{
@@ -313,6 +314,9 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                 </div>
               )}
 
+              </div>
+            <div style={card}>
+
               <div style={cardLabel}>Population Forecast with 95% Confidence Interval</div>
               <Plot
                 data={traces}
@@ -329,18 +333,22 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                 useResizeHandler
               />
             </div>
+            </>
           )}
+
 
           {/* Forecast table */}
           {Object.keys(results).length > 0 && (
             <div style={card}>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center",           
+              gap: 8 
+            }}>
               <div style={cardLabel}>Forecast Values</div>
-              <div style={{ display: "grid", gridTemplateColumns: `2fr ${forecastYears.map(() => "1fr").join(" ")}`, fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", padding: "4px 0 8px", borderBottom: `1px solid ${t.border}` }}>
-                <span>Neighbourhood</span>
-                {forecastYears.map(y => <span key={y}>{y}</span>)}
-              </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, color: t.textMuted }}>Forecast mode:</span>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {["Permit + GP", "GP only"].map((label, i) => (
                   <button
                     key={label}
@@ -353,6 +361,16 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                     }}
                   >{label}</button>
                 ))}
+              </div>
+            </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: `2fr ${forecastYears.map(() => "1fr").join(" ")}`, fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: "uppercase", padding: "4px 0 8px", borderBottom: `1px solid ${t.border}` }}>
+                <span>Neighbourhood</span>
+                
+                {forecastYears.map(y => <span key={y}>{y}</span>)}
+              </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                
               </div>
 
               {selected.map((neigh, ci) => {
