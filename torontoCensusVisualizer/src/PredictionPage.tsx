@@ -94,7 +94,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
 
     if (r.is_split) {
       // Pre-2021 portion of this neighbourhood — dotted, faded
-      const preYears  = histYears.filter(y => y <= 2021);
+      const preYears  = histYears.filter(y => y < 2021);
       const preValues = preYears.map(y => r.historical[y]);
       traces.push({
         x: preYears, y: preValues,
