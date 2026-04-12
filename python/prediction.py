@@ -96,7 +96,7 @@ def fit_gp_per_sample(years, values, is_stable=True):
         # Higher noise on pre-2021 synthetic points, lower on 2021 actual
         alpha = np.where(years < 2021, 500.0, 10.0)  
     else:
-        alpha = 1e-10 
+        alpha = 0.05  # low noise for stable neighbourhoods
 
     kernel = RBF(length_scale=0.3, length_scale_bounds=(0.01, 10)) \
            + WhiteKernel(noise_level=0.1, noise_level_bounds=(1e-3, 1))
@@ -109,16 +109,24 @@ def fit_gp_per_sample(years, values, is_stable=True):
     return gp, X.min(), X.max()
 
 def fit_gp(years: np.ndarray, values: np.ndarray):
-    """Fit a Gaussian Process to (years, population) data."""
     X = years.reshape(-1, 1).astype(float)
     y = values.astype(float)
 
-    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
+    x_min, x_max = X.min(), X.max()
+    X_norm = (X - x_min) / (x_max - x_min + 1e-8)
 
-    kernel = (RBF(length_scale=0.5, length_scale_bounds="fixed") + WhiteKernel(noise_level=0.01, noise_level_bounds=(1e-5, 0.1)) )
-    gp = GaussianProcessRegressor( kernel=kernel, alpha=1e-6, n_restarts_optimizer=5, normalize_y=True,)
-    gp.fit(X_norm, y)
-    return gp, X.min(), X.max()
+    y_scaler = StandardScaler()
+    y_scaled = y_scaler.fit_transform(y.reshape(-1, 1)).ravel()
+
+    kernel = (C(1.0, (1e-2, 1e2)) * RBF(length_scale=1.5, length_scale_bounds="fixed") + WhiteKernel(noise_level=0.005, noise_level_bounds=(1e-6, 0.01)) )
+
+    gp = GaussianProcessRegressor(kernel=kernel,
+        alpha=0.005, 
+        n_restarts_optimizer=5,
+        normalize_y=False,)
+    
+    gp.fit(X_norm, y_scaled)
+    return gp, x_min, x_max, y_scaler
 
 def get_predecessor_series(predecessors: list[dict]) -> dict:
     """Load historical population for each predecessor neighbourhood."""
@@ -156,7 +164,7 @@ def forecast(
     years  = np.array(row.index.tolist(), dtype=float)
     values = np.array(row.values, dtype=float)
 
-    gp, y_min, y_max = fit_gp(years, values)
+    gp, y_min, y_max, y_scaler = fit_gp(years, values)
 
     '''
         all_years = np.array(sorted(years.tolist() + forecast_years), dtype=float)
@@ -165,7 +173,11 @@ def forecast(
     '''
     forecast_arr = np.array(forecast_years, dtype=float)
     X_norm = ((forecast_arr - y_min) / (y_max - y_min + 1e-8)).reshape(-1, 1)
-    y_pred, y_std = gp.predict(X_norm, return_std=True)
+    y_pred_scaled, y_std_scaled = gp.predict(X_norm, return_std=True)
+
+    # Unscale mean and std back to population units
+    y_pred = y_scaler.inverse_transform(y_pred_scaled.reshape(-1, 1)).ravel()
+    y_std  = y_std_scaled * y_scaler.scale_  # std scales linearly
 
     shap_values = _compute_shap(pop_df, neighbourhood, years, values)
 
