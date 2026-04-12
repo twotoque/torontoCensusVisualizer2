@@ -108,12 +108,6 @@ permit_gdf_full = gpd.GeoDataFrame(
     crs="EPSG:4326"
 ).to_crs("EPSG:32617")
 
-permit_gdf_full = gpd.GeoDataFrame(
-    pd.concat([permit_gdf_4326, fallback_combined], ignore_index=True),
-    geometry="geometry",
-    crs="EPSG:4326"
-).to_crs("EPSG:32617")
-
 print(f"\nTotal geocoded permits (all methods): {len(permit_gdf_full):,}")
 print(f"Coverage: {len(permit_gdf_full)/len(res_permits)*100:.1f}%")
 
