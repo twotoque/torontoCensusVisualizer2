@@ -58,22 +58,24 @@ export const CensusSearch: React.FC<CensusSearchProps> = ({ year, onSelect, apiB
       {suggestions.length > 0 && (
         <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-md)]">
           {suggestions.map(sg => (
-            <li
-              key={sg.row_id}
-              onClick={() => {
-                onSelect(sg.row_id);
-                setInput(sg.label);
-                setSuggestions([]);
-              }}
-              className="flex cursor-pointer items-center gap-2 border-b border-[var(--border)] px-3 py-2 text-sm last:border-0 hover:bg-[var(--surface-alt)]"
-            >
-              <span className="text-[11px] font-semibold text-[var(--text-muted)]">#{sg.row_id}</span>
-              <span className="flex-1">{sg.label}</span>
-              {"year" in sg && (
-                <span className="flex-shrink-0 rounded border border-[var(--border)] bg-[var(--surface-alt)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
-                  {(sg as any).year}
-                </span>
-              )}
+            <li key={sg.row_id} className="border-b border-[var(--border)] last:border-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect(sg.row_id);
+                  setInput(sg.label);
+                  setSuggestions([]);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-alt)]"
+              >
+                <span className="text-[11px] font-semibold text-[var(--text-muted)]">#{sg.row_id}</span>
+                <span className="flex-1">{sg.label}</span>
+                {"year" in sg && (
+                  <span className="flex-shrink-0 rounded border border-[var(--border)] bg-[var(--surface-alt)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                    {(sg as any).year}
+                  </span>
+                )}
+              </button>
             </li>
           ))}
         </ul>
