@@ -19,6 +19,23 @@ split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[ old_weights['AREA_NAME_1'].isin(split_old)]['AREA_NAME_2'].unique().tolist()
 
+def get_predecessor_neighbourhoods(neighbourhood: str) -> list[dict]:
+    """Find all 140-neighbourhoods that came from the same old 158 source."""
+    old_sources = old_weights[
+        (old_weights['AREA_NAME_2'] == neighbourhood) & 
+        (old_weights['weight'] > 0.01)
+    ]['AREA_NAME_1'].unique()
+
+    siblings = old_weights[
+        old_weights['AREA_NAME_1'].isin(old_sources) &
+        (old_weights['weight'] > 0.01)
+    ][['AREA_NAME_2', 'weight']].drop_duplicates()
+
+    return [
+        {"name": row["AREA_NAME_2"], "weight": round(float(row["weight"]), 3)}
+        for _, row in siblings.iterrows()
+    ]
+
 def normalize_neighbourhood(name: str) -> str:
     return name  
 
@@ -99,6 +116,19 @@ def fit_gp(years: np.ndarray, values: np.ndarray):
     gp.fit(X_norm, y)
     return gp, X.min(), X.max()
 
+def get_predecessor_series(predecessors: list[dict]) -> dict:
+    """Load historical population for each predecessor neighbourhood."""
+    pop_df = load_population_series()
+    result = {}
+    for p in predecessors:
+        name = p["name"]
+        if name in pop_df.index:
+            row = pop_df.loc[name].dropna()
+            result[name] = {
+                "weight": p["weight"],
+                "historical": {int(y): float(v) for y, v in row.items()}
+            }
+    return result
 
 def forecast(
     neighbourhood: str,
@@ -152,7 +182,24 @@ def forecast(
         if int(y) in forecast_years
     }
 
-    print(SPLIT_NEIGHBOURHOOD_LIST)
+    predecessors = get_predecessor_neighbourhoods(neighbourhood)
+    
+
+    is_split = neighbourhood in SPLIT_NEIGHBOURHOOD_LIST
+
+    gp_years  = [int(y) for y in years] + forecast_years
+    gp_mean   = list(values.round(1))   + [round(float(m), 1) for m in y_pred]
+    gp_lower  = list(values.round(1))   + [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)]
+    gp_upper  = list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)]
+
+    if is_split:
+        cutoff = next((i for i, y in enumerate(gp_years) if y >= 2021), 0)
+        gp_years  = gp_years[cutoff:]
+        gp_mean   = gp_mean[cutoff:]
+        gp_lower  = gp_lower[cutoff:]
+        gp_upper  = gp_upper[cutoff:]
+        
+
     return {
         "neighbourhood": neighbourhood,
         "historical": {
@@ -168,14 +215,16 @@ def forecast(
             for y, m, s in zip(forecast_arr, y_pred, y_std)
             if int(y) in forecast_years
         },
-        "gp_full": {
-            "years":  [int(y) for y in years] + forecast_years,
-            "mean":   list(values.round(1))   + [round(float(m), 1) for m in y_pred],
-            "lower":  list(values.round(1))   + [round(float(m - 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
-            "upper":  list(values.round(1))   + [round(float(m + 1.96 * s), 1) for m, s in zip(y_pred, y_std)],
+       "gp_full": {
+        "years": gp_years,
+        "mean":  gp_mean,
+        "lower": gp_lower,
+        "upper": gp_upper,
         },
-        "is_split": neighbourhood in SPLIT_NEIGHBOURHOOD_LIST,  # <-- add this
+        "is_split": neighbourhood in SPLIT_NEIGHBOURHOOD_LIST, 
         "shap": shap_values,
+        "predecessors": predecessors, 
+        "predecessor_series": get_predecessor_series(predecessors),
     }
 
 

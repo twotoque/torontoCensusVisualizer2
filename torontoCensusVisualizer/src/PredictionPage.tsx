@@ -5,6 +5,11 @@ import { useSearchSlot } from "./SearchSlotContext";
 
 const API = "/api";
 
+interface PredecessorSeries {
+  weight: number;
+  historical: Record<number, number>;
+}
+
 interface ForecastResult {
   neighbourhood: string;
   historical:    Record<number, number>;
@@ -14,6 +19,8 @@ interface ForecastResult {
   shap:          { features: string[]; years: number[]; values: Record<string, number>[] };
   is_split?:     boolean;
   error?:        string;
+  predecessors: { name: string; weight: number }[];
+  predecessor_series: Record<string, PredecessorSeries>;
 }
 interface PredictionPageProps {
   t: Tokens;
@@ -82,34 +89,81 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
     if (!r || r.error) return;
     const color = COLORS[ci % COLORS.length];
 
-    // Historical points
-    const histYears  = Object.keys(r.historical).map(Number).sort();
+    // Historical points - only show from 2021 for split neighbourhoods
+    const histYears  = Object.keys(r.historical).map(Number).sort()
     const histValues = histYears.map(y => r.historical[y]);
 
     traces.push({
-      x: histYears, y: histValues,
-      mode: "markers+lines", name: `${neigh} (historical)`,
-      line: { color, width: 2 },
-      marker: { size: 6, color },
+        x: histYears, y: histValues,
+        mode: "markers+lines", name: `${neigh} (historical)`,
+        line: { color, width: 2 },
+        marker: { size: 6, color },
     });
 
-    // GP mean line (includes forecast)
+    // Predecessor lines — shown pre-2021 as dotted with weight in legend
+    if (r.is_split) {
+    // Pre-2021 portion — lighter to indicate old boundary
+    const preYears  = histYears.filter(y => y <= 2021);
+    const preValues = preYears.map(y => r.historical[y]);
     traces.push({
-      x: r.gp_full.years, y: r.gp_full.mean,
-      mode: "lines", name: `${neigh} (forecast)`,
-      line: { color, width: 2, dash: "dot" },
+        x: preYears, y: preValues,
+        mode: "lines+markers", name: `${neigh} (pre-split)`,
+        line: { color, width: 1.5, dash: "dot" },
+        marker: { size: 4, color },
+        opacity: 0.4,
     });
 
-    // Confidence band
+    // 2021 onward — full solid line
+    const postYears  = histYears.filter(y => y >= 2021);
+    const postValues = postYears.map(y => r.historical[y]);
     traces.push({
-      x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
-      y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
-      fill: "toself", fillcolor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
-      line: { color: "transparent" },
-      name: `${neigh} 95% CI`,
-      showlegend: false, type: "scatter",
+        x: postYears, y: postValues,
+        mode: "markers+lines", name: `${neigh} (historical)`,
+        line: { color, width: 2 },
+        marker: { size: 6, color },
     });
-  });
+} else {
+    traces.push({
+        x: histYears, y: histValues,
+        mode: "markers+lines", name: `${neigh} (historical)`,
+        line: { color, width: 2 },
+        marker: { size: 6, color },
+    });
+}
+
+// Predecessor siblings — full history up to 2021
+if (r.is_split && r.predecessor_series) {
+    Object.entries(r.predecessor_series).forEach(([predName, pred]) => {
+        const predYears  = Object.keys(pred.historical).map(Number).sort()
+            .filter(y => y <= 2021);
+        const predValues = predYears.map(y => pred.historical[y]);
+        const pct = Math.round(pred.weight * 100);
+        traces.push({
+            x: predYears, y: predValues,
+            mode: "lines+markers",
+            name: `${predName} (${pct}%)`,
+            line: { color, width: 1.5, dash: "dashdot" },
+            marker: { size: 4, color },
+            opacity: 0.6,
+        });
+    });
+}
+    // GP forecast line and CI band unchanged
+    traces.push({
+        x: r.gp_full.years, y: r.gp_full.mean,
+        mode: "lines", name: `${neigh} (forecast)`,
+        line: { color, width: 2, dash: "dot" },
+    });
+
+    traces.push({
+        x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
+        y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
+        fill: "toself", fillcolor: color.replace(")", ", 0.1)").replace("rgb", "rgba"),
+        line: { color: "transparent" },
+        name: `${neigh} 95% CI`,
+        showlegend: false, type: "scatter",
+    });
+});
 
   // SHAP bar for first selected neighbourhood
     const activeShapNeigh = shapNeigh ?? selected[0];
