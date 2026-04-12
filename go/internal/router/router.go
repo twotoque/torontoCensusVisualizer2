@@ -64,6 +64,7 @@ func (ro *Router) Build(allowedOrigins []string) http.Handler {
 	r.Get("/api/census/{year}/row/{row}/export/{kind}",  ro.exportFigure)
 	r.Post("/api/census/{year}/export/stack",            ro.exportStack)
 	r.Get("/api/census/{year}/row/{row}/compare/{prevYear}", ro.compareYears)
+	r.Get("/api/census/{year}/row/{row}/median",            ro.getMedian)
 
 	//rag fns 
 	r.Get("/api/census/{year}/semantic-search", ro.semanticSearch)
@@ -234,4 +235,13 @@ func (ro *Router) getCell(w http.ResponseWriter, r *http.Request) {
 
     // no caching — cell lookups are tied to specific chat answers
     ro.figures.Get(w, path, "", "application/json")
+}
+
+func (ro *Router) getMedian(w http.ResponseWriter, r *http.Request) {
+	year, row := paramYear(r), paramRow(r)
+	ro.figures.Get(w,
+		fmt.Sprintf("/census/%d/row/%d/median", year, row),
+		fmt.Sprintf("median:%d:%d", year, row),
+		"application/json",
+	)
 }

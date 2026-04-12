@@ -17,6 +17,7 @@ import math
 from functools import lru_cache
 
 from prediction import forecast, compare_neighbourhoods
+import statistics
 
 
 app = FastAPI(title="Census Internal API", docs_url=None, redoc_url=None)
@@ -329,3 +330,27 @@ def get_cell(year: int, row_id: int, neighbourhood: str, context_rows: int = 6):
         "target_df_idx": int(idx),
         "row_start":     int(row_start),
     })
+
+@app.get("/census/{year}/row/{row}/median")
+def get_median(year: int, row: int):
+    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    idx = resolve_row(census_df, row, id_col)
+    
+    row_data = census_df.iloc[idx]
+    col_start = census_df.columns.get_loc(label_col)
+    neighbourhood_cols = census_df.columns[col_start + 1:]
+    
+    values = []
+    for col in neighbourhood_cols:
+        try:
+            val = float(str(row_data[col]).replace(",", "").replace("%", ""))
+            if not math.isnan(val):
+                values.append(val)
+        except (ValueError, TypeError):
+            pass
+    
+    median_val = None
+    if values:
+        median_val = statistics.median(values)
+    
+    return JSONResponse(content=_sanitize({"median": median_val}))
