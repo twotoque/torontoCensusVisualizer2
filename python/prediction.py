@@ -273,8 +273,8 @@ def _compute_shap(
                 "growth_prev": (v - v_arr[i-1]) / (v_arr[i-1] + 1e-8) if i > 0 else 0.0,
                 "population":  v,
             }
-            # Permit features are attached via the target ward only;
-            # other neighbourhoods get zeros (we don't have their ward mappings here).
+            # Permit features are looked up for each neighbourhood-year pair
+            # via `_get_permit_features_for(neigh, y)` when enabled.
             if use_permits:
                 entry.update(_get_permit_features_for(neigh, y))
             rows.append(entry)
