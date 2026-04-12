@@ -11,9 +11,6 @@ from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
 from permits import _get_permit_features_for
-from sklearn.preprocessing import StandardScaler
-
-from pathlib import Path
 old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
 split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
