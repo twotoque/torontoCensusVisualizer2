@@ -63,6 +63,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           onClick={onSend}
           disabled={disabled}
+          aria-label="Send message"
           className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
             disabled
               ? "cursor-default bg-[var(--surface-alt)] text-[var(--text-muted)]"
