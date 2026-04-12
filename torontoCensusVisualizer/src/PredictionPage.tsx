@@ -303,7 +303,7 @@ export const PredictionPage: React.FC<PredictionPageProps> = ({ t }) => {
                   borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#b45309",
                   display: "flex", gap: 8, alignItems: "flex-start",
                 }}>
-                  <span style={{ fontSize: 14 }}>⚠️</span>
+                  <span aria-hidden="true" style={{ fontSize: 14 }}>⚠️</span>
                   <div>
                     <strong>Boundary change detected</strong> —{" "}
                     {selected.filter(n => results[n]?.is_split).join(", ")}{" "}
