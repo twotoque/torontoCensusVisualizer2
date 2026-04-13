@@ -37,7 +37,6 @@ type SortKey = "alpha" | "highest" | "lowest" | "changeHigh" | "changeLow";
 
 export const CrossRowStatsPage: React.FC = () => {
   const { setSlot } = useSearchSlot();
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
   // All selected years to compare across (default: all available)
   const [activeYears, setActiveYears] = useState<number[]>([]);
   const [trackedRows, setTrackedRows] = useState<TrackedRow[]>([]);
@@ -60,7 +59,6 @@ export const CrossRowStatsPage: React.FC = () => {
       .then(r => r.json())
       .then(d => {
         const years: number[] = d.years ?? [];
-        setAvailableYears(years);
         setActiveYears(years);
       });
   }, []);
