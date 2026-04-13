@@ -6,12 +6,13 @@ import { CellViewer, type CellTarget } from "../components/cell/CellViewer";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
 import { type Message } from "../components/chat/types";
-
+import { PromptBuilder } from "../components/chat/PromptBuilder";
 const API = "/api";
 
 function uid() {
   return crypto.randomUUID();
 }
+
 
 export const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -110,6 +111,13 @@ export const ChatPage: React.FC = () => {
     setMessages([]);
     localStorage.removeItem("chat_history");
   }
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
+  useEffect(() => {
+    fetch(`${API}/predict/neighbourhoods`)
+      .then(r => r.json())
+      .then(d => setNeighbourhoods(d.neighbourhoods));
+  }, []);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -119,6 +127,13 @@ export const ChatPage: React.FC = () => {
         onSelect={confirm}
         onJumpToCell={setCellTarget}
       />
+        {showBuilder && (
+          <PromptBuilder
+            neighbourhoods={neighbourhoods}
+            onSend={(q) => { setQuestion(q); setShowBuilder(false); }}
+            onClose={() => setShowBuilder(false)}
+          />
+        )}
       <ChatInput
         value={question}
         loading={loading}
@@ -126,6 +141,9 @@ export const ChatPage: React.FC = () => {
         onChange={setQuestion}
         onSend={send}
         onClear={clear}
+
+        onToggleBuilder={() => setShowBuilder(p => !p)}
+        showBuilder={showBuilder}
       />
       <CellViewer target={cellTarget} onClose={() => setCellTarget(null)} />
     </div>
