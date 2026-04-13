@@ -140,9 +140,6 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                       placeholder="Search neighbourhoods…"
                       className="w-full rounded px-2 py-1 text-xs bg-[var(--bg)] text-[var(--text)] border border-[var(--border)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                       onClick={e => e.stopPropagation()}
-                      onChange={e => {
-                        // Filter logic can be added here if needed
-                      }}
                     />
                   </div>
                   <div className="p-2">
