@@ -116,7 +116,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
             <div className="relative flex-1">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-full flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)]"
+                className="w-full flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)]"
               >
                 <span className="truncate">
                   {selectedNeighbourhoods.size === 0
