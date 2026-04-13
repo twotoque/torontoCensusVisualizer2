@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchSlot } from "../SearchSlotContext";
-import { formatMetric } from "../components/census/types.ts";
+import { formatMetric } from "../components/census/types";
 import Plot from "react-plotly.js";
 import { X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
