@@ -308,7 +308,11 @@ export const CrossRowStatsPage: React.FC = () => {
                   const firstVal = row.medians[firstYear];
                   const lastVal = row.medians[lastYear];
                   const pct =
-                    firstVal && lastVal && firstVal !== 0
+                    firstVal !== null &&
+                    firstVal !== undefined &&
+                    lastVal !== null &&
+                    lastVal !== undefined &&
+                    firstVal !== 0
                       ? ((lastVal - firstVal) / Math.abs(firstVal)) * 100
                       : null;
                   const isFocused = focusedRowId === row.rowId;
