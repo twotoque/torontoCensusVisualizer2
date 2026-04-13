@@ -14,6 +14,7 @@ import {
   persistTheme,
 } from "./colours";
 import { ComparePage } from "./pages/ComparePage";
+import { CrossRowStatsPage } from "./pages/CrossrowPage";
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? detectSystemTheme());
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/census" element={<CensusPage />} />
             <Route path="/prediction" element={<PredictionPage />} />
             <Route path="/compare" element={<ComparePage />} />
+            <Route path="/crossrow" element={<CrossRowStatsPage />} />
           </Routes>
         </main>
       </div>

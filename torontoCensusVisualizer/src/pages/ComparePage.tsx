@@ -39,7 +39,6 @@ export const ComparePage: React.FC = () => {
   const [neighbourhoods, setNeighbourhoods] = useState<string[]>([]);
   const [lineFig, setLineFig] = useState<any>(null);
 
-  // Search state
   const [searchInput, setSearchInput] = useState("");
   const [suggestions, setSuggestions] = useState<
     { row_id: number; label: string; document?: string; year?: number }[]>([]);
