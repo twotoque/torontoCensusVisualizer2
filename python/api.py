@@ -335,6 +335,8 @@ def get_cell(year: int, row_id: int, neighbourhood: str, context_rows: int = 6):
 def get_median(year: int, row: int):
     _, _, _, census_df, label_col, *_, id_col = _load(year)
     idx = resolve_row(census_df, row, id_col)
+    if not (0 <= idx < len(census_df)):
+        raise HTTPException(status_code=404, detail=f"row {row} not found")
     
     row_data = census_df.iloc[idx]
     col_start = census_df.columns.get_loc(label_col)
