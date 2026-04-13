@@ -6,6 +6,8 @@ const NAV = [
   { id: "chat",   path: "/",       icon: "💬", label: "Ask" },
   { id: "census", path: "/census", icon: "📊", label: "Census Explorer" },
   { id: "prediction", path: "/prediction", icon: "📈", label: "Prediction" },
+  { id: "compare", path: "/compare", icon: "⚖️", label: "Compare" },
+  { id: "crossrow", path: "/crossrow", icon: "🔄", label: "CrossRow" },
 ];
 
 export const Sidebar: React.FC = () => {
