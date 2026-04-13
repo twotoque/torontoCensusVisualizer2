@@ -1,11 +1,32 @@
 import React from "react";
 import { type Message } from "./types";
-import { type CellTarget } from "../cell/CellViewer";
+import { type CellInfo, type CellTarget } from "../cell/CellViewer";
 
 interface MessageBubbleProps {
   msg: Message;
   onSelect: (rowId: number, year: number, question: string) => void;
   onJumpToCell: (target: CellTarget) => void;
+}
+
+function getCellYears(cell: CellInfo): { year: number; row_id: number }[] {
+  if (cell.years?.length) return cell.years;
+  if (cell.year != null && cell.row_id != null) {
+    return [{ year: cell.year, row_id: cell.row_id }];
+  }
+  return [];
+}
+
+function hasLargeScaleShift(content: string): boolean {
+  // extract all year: value pairs from trend output
+  const matches = [...content.matchAll(/(\d{4}):\s*([\d,]+\.?\d*)/g)];
+  if (matches.length < 2) return false;
+
+  const values = matches.map(m => parseFloat(m[2].replace(/,/g, "")));
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+
+  if (min <= 0) return false;
+  return max / min > 8;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onSelect, onJumpToCell }) => {
@@ -41,23 +62,30 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onSelect, onJ
         ) : (
           <>
             {msg.content}
-            {msg.cell && (
+
+            <br></br>
+            {msg.cell && getCellYears(msg.cell).map(({ year, row_id }) => (
               <button
-                onClick={() =>
-                  onJumpToCell({
-                    year: msg.cell!.year,
-                    row_id: msg.cell!.row_id,
-                    neighbourhood: msg.cell!.columns[0],
-                    metric: msg.cell!.row_label,
-                  })
-                }
-                className="mt-3 inline-flex items-center gap-2 rounded-md border border-[var(--border)] px-3 py-1 text-[11px] font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+                key={year}
+                onClick={() => onJumpToCell({
+                  year,
+                  row_id,
+                  neighbourhood: msg.cell!.columns[0],
+                  metric: msg.cell!.row_label,
+                })}
+                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
               >
-                ↗ Jump to cell
+                ↗ Jump to cell ({year})
               </button>
-            )}
+            ))}
           </>
         )}
+        {msg.role === "assistant" && hasLargeScaleShift(msg.content) && (
+            <div className="mt-2 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+              <span>⚠</span>
+              <span>Large variation detected — values may be from different metrics across years. Use Jump to Cell to verify.</span>
+            </div>
+          )}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export interface CellInfo {
   row_id:    number;
   columns:   string[];
   year:      number;
+  years?: { year: number; row_id: number }[];
 } 
 
 export interface CellTarget {
@@ -18,6 +19,8 @@ export interface CellTarget {
   row_id:       number;
   neighbourhood: string;   // column name
   metric:       string;    // human label for the header
+
+
 }
 
 interface CellRow {
