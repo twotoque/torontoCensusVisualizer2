@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchSlot } from "../SearchSlotContext";
 import { YearTabs } from "../components/census/YearTabs";
-import Plot from "react-plotly.js";
+import Plot from "../components/Plot";
 import { X } from "lucide-react";
 
 const API = "/api";
@@ -334,7 +334,6 @@ export const ComparePage: React.FC = () => {
                   title: undefined,
                 }}
                 style={{ width: "100%", height: 300 }}
-                useResizeHandler
               />
             </div>
           )}
@@ -397,7 +396,6 @@ export const ComparePage: React.FC = () => {
                   title: undefined,
                 }}
                 style={{ width: "100%", height: 300 }}
-                useResizeHandler
               />
             </div>
           )}

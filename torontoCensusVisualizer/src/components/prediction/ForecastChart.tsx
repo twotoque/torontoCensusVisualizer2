@@ -1,5 +1,5 @@
 import React from "react";
-import Plot from "react-plotly.js";
+import Plot from "../Plot";
 
 interface ForecastChartProps {
   traces: any[];
@@ -40,7 +40,6 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({ traces, selected, 
         font: { family: "DM Sans, sans-serif", color: "var(--text)" },
       }}
       style={{ width: "100%", height: 380 }}
-      useResizeHandler
     />
   </div>
 );

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
-import Plot from "react-plotly.js";
+import Plot from "../Plot";
 import { ChevronDown, X } from "lucide-react";
+import PlotGeo from "../PlotGeo";
 
 interface ChartPanelProps {
   mapFig: any;
@@ -92,7 +93,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
 
       {mapFig && (
         <div className={cardClass}>
-          <Plot
+          <PlotGeo
             key={`${year}-${row}`}
             data={mapFig.data}
             layout={{
@@ -104,8 +105,8 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
               title: undefined,
             }}
             style={{ width: "100%", height: 300 }}
-            useResizeHandler
           />
+          
         </div>
       )}
 
@@ -187,9 +188,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
               margin: { t: 10, b: 60, l: 40, r: 10 },
               title: undefined,
             }}
-            revision={visibleNeighbourhoods.length}
             style={{ width: "100%", height: 260 }}
-            useResizeHandler
           />
         </div>
       )}

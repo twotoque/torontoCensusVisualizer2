@@ -1,5 +1,5 @@
 import React from "react";
-import Plot from "react-plotly.js";
+import Plot from "../Plot"; 
 import { type ForecastResult } from "./types";
 
 interface ShapPanelProps {
@@ -61,7 +61,6 @@ export const ShapPanel: React.FC<ShapPanelProps> = ({
         font: { family: "DM Sans, sans-serif", color: "var(--text)" },
       }}
       style={{ width: "100%", height: 260 }}
-      useResizeHandler
     />
   </div>
 );
