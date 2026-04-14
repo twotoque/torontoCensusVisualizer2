@@ -67,20 +67,6 @@ export const ComparePage: React.FC = () => {
     setSuggestions([]);
   };
 
-  const handleSearchChange = useCallback(async (q: string) => {
-    setSearchInput(q);
-    if (!q) {
-      setSuggestions([]);
-      return;
-    }
-    const d = await fetch(
-      `${API}/census/${yearRef.current}/semantic-search?q=${encodeURIComponent(q)}`
-    )
-      .then(r => r.json())
-      .catch(() => ({ results: [] }));
-    setSuggestions(d.results || []);
-  }, []);
-
   // addRowToStack kept stable via ref to stackedRows
   const stackedRowsRef = useRef(stackedRows);
   stackedRowsRef.current = stackedRows;
@@ -164,22 +150,6 @@ export const ComparePage: React.FC = () => {
     },
     [buildLineGraph]
   );
-
-  const submitSearch = useCallback(() => {
-    const n = parseInt(searchInputRef.current);
-    if (!isNaN(n)) {
-      addRowToStack(n, `Row ${n}`);
-      setSearchInput("");
-      setSuggestions([]);
-      return;
-    }
-    const suggs = suggestionsRef.current;
-    if (suggs.length > 0) {
-      addRowToStack(suggs[0].row_id, suggs[0].label);
-      setSearchInput("");
-      setSuggestions([]);
-    }
-  }, [addRowToStack]);
 
   const removeRowFromStack = (rowId: number) => {
     const newStack = stackedRows.filter(r => r.rowId !== rowId);
@@ -302,7 +272,7 @@ export const ComparePage: React.FC = () => {
   return (
     <div className="flex h-full flex-col bg-[var(--bg)] text-[var(--text)]">
       <div className="flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 pb-2 pt-3">
-        <div className="mb-2 text-base font-semibold text-[var(--text)]">Census Comparison</div>
+        <div className="mb-2 text-base font-semibold text-[var(--text)]">Multi-variable Stacked Graphs</div>
         <YearTabs years={availableYears} active={year} onSelect={handleYearChange} />
       </div>
 
