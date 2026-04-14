@@ -13,8 +13,6 @@
     "@tailwindcss/vite": "^4.2.1",
     "lucide-react": "^0.577.0",
     "plotly.js-basic-dist-min": "^3.5.0",
-    "plotly.js-dist": "^3.4.0",
-    "plotly.js-geo-dist-min": "^3.5.0",
     "plotly.js-mapbox-dist-min": "^3.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
