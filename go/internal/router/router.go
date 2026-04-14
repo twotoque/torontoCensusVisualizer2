@@ -245,3 +245,5 @@ func (ro *Router) getMedian(w http.ResponseWriter, r *http.Request) {
 		"application/json",
 	)
 }
+
+func (ro *Router) Close() { ro.figures.Close() }

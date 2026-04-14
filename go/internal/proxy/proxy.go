@@ -1,165 +1,160 @@
 // internal/proxy/proxy.go
 //
 // The core of what Go does: check cache, call Python if needed, cache result.
-// Every route handler calls one of these three functions. Nothing else.
+// Every route handler calls one of these three functions.
 //
-// Adding a future LLM or ML service means adding a new Proxy instance
-// pointed at a different pythonURL — the pattern is identical.
 
 package proxy
 
 import (
-	"bytes"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"time"
+    "context"
+    "fmt"
+    "io"
+    "log"
+    "net/http"
+    "time"
 
-	"toronto-census/internal/cache"
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
+
+    "toronto-census/internal/cache"
+    pb "toronto-census/internal/figpb"
 )
 
-// Proxy forwards requests to a backend service and caches responses.
-// One Proxy per backend service (Python figures, future ML, future LLM).
 type Proxy struct {
-	backendURL string
-	cache      *cache.Cache
-	name       string // for logging
-	client     *http.Client 
+    conn   *grpc.ClientConn
+    client pb.FiguresClient
+    cache  *cache.Cache
+    name   string
 }
 
-func New(backendURL, name string, c *cache.Cache) *Proxy {
-	return &Proxy{
-		backendURL: backendURL,
-		cache:      c,
-		name:       name,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        20,
-				MaxIdleConnsPerHost: 20,
-				IdleConnTimeout:     90 * time.Second,
-			},
-		},
-	}
+func New(backendAddr, name string, c *cache.Cache) *Proxy {
+    conn, err := grpc.NewClient(backendAddr,
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+    )
+    if err != nil {
+        log.Fatalf("[%s] grpc dial: %v", name, err)
+    }
+    return &Proxy{
+        conn:   conn,
+        client: pb.NewFiguresClient(conn),
+        cache:  c,
+        name:   name,
+    }
 }
 
-// Get forwards a GET request. If cacheKey is non-empty, the response is
-// cached and served from cache on subsequent identical requests.
-// Pass cacheKey="" to skip caching (e.g. search results).
+func (p *Proxy) Close() { p.conn.Close() }
+
 func (p *Proxy) Get(w http.ResponseWriter, backendPath, cacheKey, contentType string) {
-	// 1. cache bypasses python 
-	if cacheKey != "" {
-		if cached, ok := p.cache.Get(cacheKey); ok {
-			p.write(w, cached, contentType, true)
-			return
-		}
-	}
+    if cacheKey != "" {
+        if cached, ok := p.cache.Get(cacheKey); ok {
+            p.write(w, cached, contentType, true)
+            return
+        }
+    }
 
-	// 2. cache miss → call python, return error if it fails
-	resp, err := p.client.Get(p.backendURL + backendPath)
-	if err != nil {
-		log.Printf("[%s] GET %s error: %v", p.name, backendPath, err)
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
-		return
-	}
+    resp, err := p.client.Get(ctx, &pb.GetRequest{Path: backendPath})
+    if err != nil {
+        log.Printf("[%s] GET %s error: %v", p.name, backendPath, err)
+        http.Error(w, "upstream unavailable", http.StatusBadGateway)
+        return
+    }
+    if resp.Status != http.StatusOK {
+        http.Error(w, string(resp.Body), int(resp.Status))
+        return
+    }
 
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, string(body), resp.StatusCode)
-		return
-	}
-
-	// 3. cache the successful response for next time, then return it
-	if cacheKey != "" {
-		p.cache.Set(cacheKey, body)
-	}
-	p.write(w, body, contentType, false)
+    if cacheKey != "" {
+        p.cache.Set(cacheKey, resp.Body)
+    }
+    p.write(w, resp.Body, contentType, false)
 }
 
-// Post forwards a POST request with a JSON body.
-// Post responses are not cached — the combination space is too large.
 func (p *Proxy) Post(w http.ResponseWriter, r *http.Request, backendPath, cacheKey, contentType string) {
-	// Read body so we can both cache-key it and forward it
-	reqBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "read error", http.StatusBadRequest)
-		return
-	}
+    reqBody, err := io.ReadAll(r.Body)
+    if err != nil {
+        http.Error(w, "read error", http.StatusBadRequest)
+        return
+    }
 
-	// Cache check for POST (stack charts with same rows)
-	if cacheKey != "" {
-		if cached, ok := p.cache.Get(cacheKey); ok {
-			p.write(w, cached, contentType, true)
-			return
-		}
-	}
+    if cacheKey != "" {
+        if cached, ok := p.cache.Get(cacheKey); ok {
+            p.write(w, cached, contentType, true)
+            return
+        }
+    }
 
-	resp, err := p.client.Post(
-		p.backendURL+backendPath,
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
-	if err != nil {
-		log.Printf("[%s] POST %s error: %v", p.name, backendPath, err)
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
-		return
-	}
+    resp, err := p.client.Post(ctx, &pb.PostRequest{Path: backendPath, Body: reqBody})
+    if err != nil {
+        log.Printf("[%s] POST %s error: %v", p.name, backendPath, err)
+        http.Error(w, "upstream unavailable", http.StatusBadGateway)
+        return
+    }
+    if resp.Status != http.StatusOK {
+        http.Error(w, string(resp.Body), int(resp.Status))
+        return
+    }
 
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, string(body), resp.StatusCode)
-		return
-	}
-
-	if cacheKey != "" {
-		p.cache.Set(cacheKey, body)
-	}
-	p.write(w, body, contentType, false)
+    if cacheKey != "" {
+        p.cache.Set(cacheKey, resp.Body)
+    }
+    p.write(w, resp.Body, contentType, false)
 }
 
-// Stream forwards a request and streams the response directly to the client.
-// Used for PDF exports — Go doesn't buffer, just pipes bytes through.
 func (p *Proxy) Stream(w http.ResponseWriter, r *http.Request, backendPath, filename string) {
-	var resp *http.Response
-	var err error
+    var body []byte
+    method := r.Method
+    if method == http.MethodPost {
+        var err error
+        body, err = io.ReadAll(r.Body)
+        if err != nil {
+            http.Error(w, "read error", http.StatusBadRequest)
+            return
+        }
+    }
 
-	if r.Method == http.MethodPost {
-		body, _ := io.ReadAll(r.Body)
-		resp, err = p.client.Post(p.backendURL+backendPath, "application/json", bytes.NewReader(body))
-	} else {
-		resp, err = p.client.Get(p.backendURL + backendPath)
-	}
-	if err != nil {
-		log.Printf("[%s] stream %s error: %v", p.name, backendPath, err)
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+    defer cancel()
 
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	io.Copy(w, resp.Body)
+    stream, err := p.client.Stream(ctx, &pb.StreamRequest{
+        Path:   backendPath,
+        Body:   body,
+        Method: method,
+    })
+    if err != nil {
+        log.Printf("[%s] stream %s error: %v", p.name, backendPath, err)
+        http.Error(w, "upstream unavailable", http.StatusBadGateway)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/pdf")
+    w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+
+    for {
+        chunk, err := stream.Recv()
+        if err == io.EOF {
+            break
+        }
+        if err != nil {
+            log.Printf("[%s] stream recv error: %v", p.name, err)
+            return
+        }
+        w.Write(chunk.Data)
+    }
 }
 
 func (p *Proxy) write(w http.ResponseWriter, data []byte, contentType string, fromCache bool) {
-	w.Header().Set("Content-Type", contentType)
-	if fromCache {
-		w.Header().Set("X-Cache", "HIT")
-	} else {
-		w.Header().Set("X-Cache", "MISS")
-	}
-	w.Write(data)
+    w.Header().Set("Content-Type", contentType)
+    if fromCache {
+        w.Header().Set("X-Cache", "HIT")
+    } else {
+        w.Header().Set("X-Cache", "MISS")
+    }
+    w.Write(data)
 }
