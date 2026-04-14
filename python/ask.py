@@ -16,6 +16,8 @@ from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
 import pandas as pd
 
+import statistics
+
 # import the weight "Translator" fn 
 weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
 
@@ -24,7 +26,9 @@ ENRICHMENTS = {
     "population":        "population",
     "income":            "average total income",
     "household income":  "average household total income",
-    "housing":           "dwelling units",
+    "housing":           "Private dwellings occupied by usual residents",
+    "dwelling units":    "Private dwellings occupied by usual residents",
+    "dwellings":         "Private dwellings occupied by usual residents",
     "neighbourhood number": "Neighbourhood Number",
 }
 
@@ -100,6 +104,8 @@ def _fetch_values(
 
     return result
 
+
+
 def _drop_nan_values(values: dict) -> None:
     """Remove NaN entries from a {year: {neighbourhood: value}} dict in-place."""
     for y in list(values.keys()):
@@ -108,6 +114,69 @@ def _drop_nan_values(values: dict) -> None:
                 del values[y][n]
         if not values[y]:
             del values[y]
+
+def _drop_outlier_years(values: dict) -> dict:
+    """
+    Remove years whose values are implausible compared to the rest of the trend.
+    
+    Strategy:
+    - If values clearly switch scale (count vs percentage), drop the outlier years
+    - Uses IQR-based outlier detection on log scale to handle large ranges
+    - Always keeps at least 2 years if possible
+    
+    Returns a new dict (does not mutate the original).
+    """
+
+    result = {y: dict(neighbourhood_vals) for y, neighbourhood_vals in values.items()}
+
+    # Collect (year, value) pairs — assume single neighbourhood for trend context
+    year_vals = []
+    for year, neighbourhood_dict in result.items():
+        for val in neighbourhood_dict.values():
+            if isinstance(val, float) and not math.isnan(val) and val > 0:
+                year_vals.append((year, val))
+
+    if len(year_vals) < 3:
+        return result  # not enough data to do outlier detection safely
+
+    years_list = [yv[0] for yv in year_vals]
+    vals_list  = [yv[1] for yv in year_vals]
+
+    # If some values are <= 100 and others are >> 100, split into two clustersand drop the minority cluster
+    under_100  = [(y, v) for y, v in year_vals if v <= 100]
+    over_100   = [(y, v) for y, v in year_vals if v > 100]
+
+    if under_100 and over_100:
+        # Keep whichever group is larger; on a tie, prefer the anchor (latest) year
+        majority = over_100 if len(over_100) >= len(under_100) else under_100
+        keep_years = {y for y, _ in majority}
+        result = {y: nd for y, nd in result.items() if y in keep_years}
+        if len(result) >= 2:
+            return result
+        # If dropping left us with < 2 years, fall through to IQR
+
+    # IQR outlier detection on log scale to catch more subtle outliers without assuming a specific distribution
+    log_vals = [math.log10(v) for v in vals_list if v > 0]
+    if len(log_vals) < 3:
+        return result
+
+    q1 = statistics.quantiles(log_vals, n=4)[0]   # 25th percentile
+    q3 = statistics.quantiles(log_vals, n=4)[2]   # 75th percentile
+    iqr = q3 - q1
+    fence = 1.5 * iqr
+
+    outlier_years = {
+        year for year, val in year_vals
+        if val > 0 and not (q1 - fence <= math.log10(val) <= q3 + fence)
+    }
+
+    # Never drop so many that fewer than 2 years remain
+    survivors = [y for y in years_list if y not in outlier_years]
+    if len(survivors) < 2:
+        return result  # abort: don't drop anything
+
+    return {y: nd for y, nd in result.items() if y not in outlier_years}
+
 
 def _get_label_for_row(row_id: int, year: int) -> str | None:
     """Return the descriptive label for a given row/year."""
@@ -229,6 +298,18 @@ def _template_compare_years(values, neighbourhoods, years, metric) -> str:
     return f"{metric} in {n}: {y1} → {_fmt(v1)}, {y2} → {_fmt(v2)}."
 
 
+def _is_plausible_trend(values: dict) -> bool:
+    """Reject trends where values switch scale dramatically."""
+    all_vals = [v for year_dict in values.values() 
+                for v in year_dict.values() if isinstance(v, float)]
+    if len(all_vals) < 2:
+        return True
+    max_v, min_v = max(all_vals), min(all_vals)
+    if min_v <= 0:
+        return True
+    # if values differ by more than 100x, something is wrong
+    return (max_v / min_v) < 100
+
 def _template_trend(values, neighbourhoods, years, metric) -> str:
     n     = neighbourhoods[0]
     lines = [f"{metric} in {n} over time:"]
@@ -297,11 +378,14 @@ def _build_cell_info(row_ids: dict, neighbourhoods: list[str], display_metric: s
     row_id = row_ids[year]
     label = _get_label_for_row(row_id, year)
     return {
-        "row_label": label or display_metric,
-        "row_id":    row_id,
-        "columns":   neighbourhoods[:1] if neighbourhoods else [],   # keep a single navigable spreadsheet column header
-        "year":      year,
+        "row_label": display_metric,
+        "columns":   neighbourhoods[:1],
+        "years": [
+            {"year": year, "row_id": rid}
+            for year, rid in sorted(row_ids.items())
+        ],
     }
+
 
 # rank all neighboruhood values
 
@@ -336,6 +420,28 @@ def _fetch_all_neighbourhoods_for_year(row_id: int, year: int) -> dict:
 
 
 # api
+def _make_result(
+    answer_text: str,
+    intent: str,
+    metric: str,
+    years: list[int],
+    neighbourhoods: list[str],
+    values: dict,
+    row_ids: dict,
+) -> dict:
+    return {
+        "answer":  answer_text,
+        "intent":  intent,
+        "metric":  metric,
+        "context": {
+            "years":          years,
+            "neighbourhoods": neighbourhoods,
+            "values":         values,
+            "cell":           _build_cell_info(row_ids, neighbourhoods, metric),
+        },
+        "disambiguation": None,
+    }
+
 
 def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int | None = None) -> dict:
     """
@@ -359,7 +465,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
     # 2. if it is a trend, do a special multi-year search and answer generation flow
     if intent == "trend":
-        search_query = cleaned_metric or query
+        search_query    = cleaned_metric or query
         canonical_field = (cleaned_metric or "").strip()
         canonical_field = canonical_field if canonical_field in ATTRIBUTE_MAP else None
 
@@ -372,27 +478,18 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                     row_ids[y] = row_id
 
             if row_ids:
-                anchor_lookup = get_attribute(canonical_field, max(row_ids))
+                anchor_lookup  = get_attribute(canonical_field, max(row_ids))
                 display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_lookup).strip()
                 display_metric = re.sub(r",?\s*\d{4}.*$", "", display_metric).strip()
 
                 values = _fetch_values(row_ids, neighbourhoods)
                 _drop_nan_values(values)
 
-                answer_text = _template_trend(
-                    values,
-                    neighbourhoods,
-                    sorted(values.keys()),
-                    display_metric or canonical_field.title(),
+                return _make_result(
+                    _template_trend(values, neighbourhoods, sorted(values.keys()), display_metric or canonical_field.title()),
+                    intent, display_metric or canonical_field.title(),
+                    years, neighbourhoods, values, row_ids,
                 )
-                return {
-                    "answer":         answer_text,
-                    "intent":         intent,
-                    "metric":         display_metric or canonical_field.title(),
-                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
-                                       "values": values},
-                    "disambiguation": None,
-                }
 
         if confirmed_row_id is not None and confirmed_year is not None and not canonical_field:
             anchor_label = _get_label_for_row(confirmed_row_id, confirmed_year)
@@ -411,60 +508,38 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                     values = _fetch_values(row_ids, neighbourhoods)
                     _drop_nan_values(values)
 
-                    answer_text = _template_trend(
-                        values,
-                        neighbourhoods,
-                        sorted(values.keys()),
-                        display_metric or anchor_label,
+                    return _make_result(
+                        _template_trend(values, neighbourhoods, sorted(values.keys()), display_metric or anchor_label),
+                        intent, display_metric or anchor_label,
+                        years, neighbourhoods, values, row_ids,
                     )
-                    return {
-                        "answer":         answer_text,
-                        "intent":         intent,
-                        "metric":         display_metric or anchor_label,
-                        "context":        {"years": years, "neighbourhoods": neighbourhoods,
-                                           "values": values},
-                        "disambiguation": None,
-                    }
 
         disambig_results = []
         if not canonical_field and confirmed_row_id is None:
-            anchor_year = max(years)
-            raw_results = semantic_search(search_query, year=anchor_year, limit=5)
-            disambig_results = [
-                r for r in raw_results if r["label"].strip() not in BLOCKED_LABELS
-            ]
+            anchor_year      = max(years)
+            raw_results      = semantic_search(search_query, year=anchor_year, limit=5)
+            disambig_results = [r for r in raw_results if r["label"].strip() not in BLOCKED_LABELS]
             if len(disambig_results) > 1:
                 return {
-                    "answer": None,
-                    "intent": intent,
-                    "metric": None,
-                    "context": {},
-                    "disambiguation": [
-                        {
-                            "row_id": r["row_id"],
-                            "year": r["year"],
-                            "label": r["label"],
-                            "score": r["score"],
-                        }
+                    "answer": None, "intent": intent, "metric": None,
+                    "context": {}, "disambiguation": [
+                        {"row_id": r["row_id"], "year": r["year"],
+                         "label": r["label"], "score": r["score"]}
                         for r in disambig_results
                     ],
                 }
 
-        anchor_year = max(years)
-        
-        if disambig_results:
-            anchor_results = disambig_results[:1]
-        else:
-            anchor_results = semantic_search(search_query, year=anchor_year, limit=10)
-            anchor_results = [
-                r for r in anchor_results if r["label"].strip() not in BLOCKED_LABELS
-            ]
-        
+        anchor_year    = max(years)
+        anchor_results = disambig_results[:1] if disambig_results else [
+            r for r in semantic_search(search_query, year=anchor_year, limit=10)
+            if r["label"].strip() not in BLOCKED_LABELS
+        ]
+
         if anchor_results:
-            anchor_row = anchor_results[0]
+            anchor_row   = anchor_results[0]
             anchor_label = anchor_row["label"]
-            row_ids = {anchor_year: anchor_row["row_id"]}
-            
+            row_ids      = {anchor_year: anchor_row["row_id"]}
+
             for y in sorted(years):
                 if y == anchor_year:
                     continue
@@ -475,25 +550,19 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 row_id, score = find_row_in_year(lookup_label, y)
                 if row_id is not None and score > 0.3:
                     row_ids[y] = row_id
-            
+
             if row_ids:
                 display_metric = re.sub(r"\s*[-—]\s*\d{4}.*$", "", anchor_label).strip()
                 display_metric = re.sub(r",?\s*\d{4}$", "", display_metric).strip()
-                
                 values = _fetch_values(row_ids, neighbourhoods)
                 _drop_nan_values(values)
-                
-                answer_text = _template_trend(values, neighbourhoods,
-                                            sorted(values.keys()), display_metric)
-                return {
-                    "answer":         answer_text,
-                    "intent":         intent,
-                    "metric":         display_metric,
-                    "context":        {"years": years, "neighbourhoods": neighbourhoods,
-                                    "values": values},
-                    "disambiguation": None,
-                }
-            
+
+                return _make_result(
+                    _template_trend(values, neighbourhoods, sorted(values.keys()), display_metric),
+                    intent, display_metric,
+                    years, neighbourhoods, values, row_ids,
+                )
+
     # 3. RAG — skip if user already confirmed a row
     if confirmed_row_id is not None and confirmed_year is not None:
         row_ids = {confirmed_year: confirmed_row_id}
@@ -533,10 +602,10 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 "intent": intent, "metric": results[0]["label"], "context": {}, "disambiguation": None,
             }
 
-        first_year = next(iter(row_ids))
+        first_year   = next(iter(row_ids))
         year_results = semantic_search(
             f"{_clean_query_for_rag(query, neighbourhoods, [first_year]) or query} {first_year}",
-            year=first_year, limit=1
+            year=first_year, limit=1,
         )
         display_metric = year_results[0]["label"].strip() if year_results else results[0]["label"]
 
@@ -562,17 +631,9 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
     # 5. Generate answer from template
     template_fn = TEMPLATE_FNS.get(intent, _template_single_value)
-    answer_text = template_fn(values, neighbourhoods, years, display_metric)
 
-    return {
-        "answer":         answer_text,
-        "intent":         intent,
-        "metric":         display_metric,
-        "context":        {
-            "years":           years,
-            "neighbourhoods":  neighbourhoods,
-            "values":          values,
-            "cell": _build_cell_info(row_ids, neighbourhoods, display_metric),
-        },
-        "disambiguation": None,
-    }
+    return _make_result(
+        template_fn(values, neighbourhoods, years, display_metric),
+        intent, display_metric,
+        years, neighbourhoods, values, row_ids,
+    )

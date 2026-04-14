@@ -7,6 +7,8 @@ interface ChatInputProps {
   onChange: (v: string) => void;
   onSend: () => void;
   onClear: () => void;
+  onToggleBuilder: () => void;
+  showBuilder: boolean;
 }
 
 const IconSend = () => (
@@ -30,9 +32,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onChange,
   onSend,
   onClear,
+  onToggleBuilder,
+  showBuilder
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const disabled = loading || !value.trim();
+  void showBuilder;
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -60,6 +65,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           className="min-h-6 max-h-40 flex-1 resize-none bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
           style={{ overflowY: "auto" }}
         />
+          <button
+            onClick={onToggleBuilder}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] transition hover:text-[var(--text)]"
+            aria-label="Prompt builder"
+          >
+            {/* grid icon */}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </svg>
+          </button>
         <button
           onClick={onSend}
           disabled={disabled}
