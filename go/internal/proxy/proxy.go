@@ -111,7 +111,12 @@ func (p *Proxy) Stream(w http.ResponseWriter, r *http.Request, backendPath, file
     var body []byte
     method := r.Method
     if method == http.MethodPost {
-        body, _ = io.ReadAll(r.Body)
+        var err error
+        body, err = io.ReadAll(r.Body)
+        if err != nil {
+            http.Error(w, "read error", http.StatusBadRequest)
+            return
+        }
     }
 
     ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
