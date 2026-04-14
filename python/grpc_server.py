@@ -1,4 +1,4 @@
-# grpc_server.py  ← new file only, nothing else changes
+# grpc_server.py 
 import grpc
 from concurrent import futures
 import figures_pb2, figures_pb2_grpc
