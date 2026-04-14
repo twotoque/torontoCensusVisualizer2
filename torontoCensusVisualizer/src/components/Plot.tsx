@@ -21,7 +21,10 @@ const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
     if (!el) return;
     const observer = new ResizeObserver(() => Plotly.Plots.resize(el));
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      Plotly.purge(el);
+    };
   }, []);
 
   return <div ref={ref} style={style} />;
