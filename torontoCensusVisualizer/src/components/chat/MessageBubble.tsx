@@ -81,8 +81,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onSelect, onJ
           </>
         )}
         {msg.role === "assistant" && hasLargeScaleShift(msg.content) && (
-            <div className="mt-2 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
-              <span>⚠</span>
+            <div
+              role="alert"
+              className="mt-2 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+            >
+              <span aria-hidden="true">⚠</span>
               <span>Large variation detected — values may be from different metrics across years. Use Jump to Cell to verify.</span>
             </div>
           )}
