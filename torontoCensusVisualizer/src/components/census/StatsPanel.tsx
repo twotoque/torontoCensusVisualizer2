@@ -13,7 +13,6 @@ interface StatsPanelProps {
 }
 
 export const StatsPanel: React.FC<StatsPanelProps> = ({
-  biggest,
   changeData,
   year,
   prevYear,
