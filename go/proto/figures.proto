@@ -1,0 +1,19 @@
+// proto/figures.proto
+syntax = "proto3";
+package figures;
+option go_package = "toronto-census/internal/figpb";
+
+service Figures {
+  rpc Get    (GetRequest)    returns (GetResponse);
+  rpc Post   (PostRequest)   returns (PostResponse);
+  rpc Stream (StreamRequest) returns (stream Chunk);
+}
+
+message GetRequest  { string path = 1; }
+message GetResponse { bytes body = 1; int32 status = 2; }
+
+message PostRequest  { string path = 1; bytes body = 2; }
+message PostResponse { bytes body = 1; int32 status = 2; }
+
+message StreamRequest { string path = 1; bytes body = 2; string method = 3; }
+message Chunk         { bytes data = 1; }
