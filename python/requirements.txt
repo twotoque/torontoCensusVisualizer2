@@ -1,0 +1,10 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+grpcio==1.60.0
+grpcio-tools==1.60.0
+pandas
+numpy
+geopandas
+scikit-learn
+shap
+plotly

@@ -1,0 +1,8 @@
+node_modules
+.git
+.DS_Store
+python/__pycache__
+data/*.parquet
+data/*.csv
+preview pics
+docs
