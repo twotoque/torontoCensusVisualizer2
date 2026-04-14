@@ -107,7 +107,6 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
               title: undefined,
             }}
             style={{ width: "100%", height: 300 }}
-            useResizeHandler
           />
           
         </div>
@@ -191,9 +190,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
               margin: { t: 10, b: 60, l: 40, r: 10 },
               title: undefined,
             }}
-            revision={visibleNeighbourhoods.length}
             style={{ width: "100%", height: 260 }}
-            useResizeHandler
           />
         </div>
       )}

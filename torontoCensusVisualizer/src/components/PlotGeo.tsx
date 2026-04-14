@@ -1,5 +1,31 @@
-import createPlotlyComponent from "react-plotly.js/factory";
+// src/components/PlotGeo.tsx
+import React, { useEffect, useRef } from "react";
 import Plotly from "plotly.js-mapbox-dist-min";
 
-const PlotGeo = createPlotlyComponent(Plotly as any);
+interface PlotProps {
+  data: any[];
+  layout?: any;
+  style?: React.CSSProperties;
+  plotKey?: string;
+}
+
+const PlotGeo: React.FC<PlotProps> = ({ data, layout, style, plotKey }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    Plotly.react(ref.current, data, layout ?? {});
+  }, [data, layout, plotKey]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => Plotly.Plots.resize(el));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={ref} style={style} />;
+};
+
 export default PlotGeo;

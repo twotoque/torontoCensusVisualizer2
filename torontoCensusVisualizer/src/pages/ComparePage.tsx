@@ -334,7 +334,6 @@ export const ComparePage: React.FC = () => {
                   title: undefined,
                 }}
                 style={{ width: "100%", height: 300 }}
-                useResizeHandler
               />
             </div>
           )}
@@ -397,7 +396,6 @@ export const ComparePage: React.FC = () => {
                   title: undefined,
                 }}
                 style={{ width: "100%", height: 300 }}
-                useResizeHandler
               />
             </div>
           )}
