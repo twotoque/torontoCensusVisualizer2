@@ -47,8 +47,6 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
     const filteredX = indices.map(i => originalData.x[i]);
     const filteredY = indices.map(i => originalData.y[i]);
 
-    console.log(mapFig.data[0].type)
-
     return {
       ...barFig,
       data: [
