@@ -16,5 +16,16 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080'
     }
-  }
+    
+  },
+  build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        "plotly-basic": ["plotly.js-basic-dist-min"],
+        "plotly-mapbox": ["plotly.js-mapbox-dist-min"],
+      },
+    },
+  },
+},
 })
