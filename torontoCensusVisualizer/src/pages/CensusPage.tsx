@@ -3,7 +3,7 @@
 //   YearTabs        — year selector strip
 //   CensusSearch    — search input for TopBar slot
 //   ChartPanel      — map + bar + stacked comparison
-//   StatsPanel      — biggest + change table + export
+//   StatsPanel      — change table + export
 //   CensusPage      — composes everything, owns state
 
 import React, { useState, useEffect } from "react";
@@ -12,7 +12,7 @@ import { YearTabs } from "../components/census/YearTabs";
 import { CensusSearch } from "../components/census/CensusSearch";
 import { ChartPanel } from "../components/census/ChartPanel";
 import { StatsPanel } from "../components/census/StatsPanel";
-import { type ChangeRow, type BiggestItem } from "../components/census/types";
+import { type ChangeRow } from "../components/census/types";
 
 const API = "/api";
 
@@ -34,7 +34,6 @@ export const CensusPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [changeData, setChangeData] = useState<ChangeRow[]>([]);
-  const [biggest, setBiggest] = useState<BiggestItem[]>([]);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [prevLabel, setPrevLabel] = useState<string>("");
 
@@ -49,7 +48,6 @@ export const CensusPage: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    setBiggest([]);
     setChangeData([]);
     const prevYear = PREV_YEAR[year] ?? year;
     Promise.all([
@@ -65,16 +63,6 @@ export const CensusPage: React.FC = () => {
         setMapFig(map);
         setBarFig(bar);
         if (bar?.layout?.title?.text) setTitle(bar.layout.title.text);
-
-        if (bar?.data?.[0]) {
-          setBiggest(
-            (bar.data[0].x as string[])
-              .map((n: string, i: number) => ({ name: n, val: bar.data[0].y[i] as number }))
-              .filter(x => x.val && x.val > 0)
-              .sort((a, b) => b.val - a.val)
-              .slice(0, 2)
-          );
-        }
 
         if (compareData?.data) {
           setMatchScore(compareData.match_score ?? null);
@@ -110,7 +98,6 @@ export const CensusPage: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <ChartPanel mapFig={mapFig} barFig={barFig} loading={loading} year={year} row={row} />
         <StatsPanel
-          biggest={biggest}
           changeData={changeData}
           year={year}
           prevYear={prevYear}

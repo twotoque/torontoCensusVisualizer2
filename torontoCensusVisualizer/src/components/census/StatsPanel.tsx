@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { formatMetric, type ChangeRow, type BiggestItem } from "./types";
+import { formatMetric, type ChangeRow } from "./types";
 
 interface StatsPanelProps {
-  biggest: BiggestItem[];
   changeData: ChangeRow[];
   year: number;
   prevYear: number;
