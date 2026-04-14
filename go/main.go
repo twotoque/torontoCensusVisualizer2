@@ -14,13 +14,16 @@ import (
 
 func main() {
 	addr       := env("ADDR",           ":8080")
-	pythonURL  := env("PYTHON_URL",     "http://127.0.0.1:8000")
+	pythonURL  := env("PYTHON_URL",     "127.0.0.1:50051")
 	origin     := env("ALLOWED_ORIGIN", "http://localhost:3000")
 	cacheTTL   := 10 * time.Minute
 
 	c       := cache.New(cacheTTL)
-	ro      := router.New(pythonURL, c)
+	ro      := router.New(pythonURL, c)   
 	handler := ro.Build([]string{origin})
+
+	// expose Close so main can drain the connection
+	defer ro.Close()  
 
 	log.Printf("Go server listening on %s", addr)
 	log.Printf("Proxying figures → %s", pythonURL)
