@@ -26,7 +26,9 @@ ENRICHMENTS = {
     "population":        "population",
     "income":            "average total income",
     "household income":  "average household total income",
-    "housing":           "dwelling units",
+    "housing":           "Private dwellings occupied by usual residents",
+    "dwelling units":    "Private dwellings occupied by usual residents",
+    "dwellings":         "Private dwellings occupied by usual residents",
     "neighbourhood number": "Neighbourhood Number",
 }
 

@@ -15,7 +15,7 @@ const METRICS = [
   { value: "population",                    label: "Population" },
   { value: "average total income",          label: "Avg income" },
   { value: "average household total income",label: "Household income" },
-  { value: "dwelling units",                label: "Housing" },
+  { value: "dwelling units", label: "Housing / Dwellings" },
   { value: "employment income",             label: "Employment income" },
   { value: "mother tongue",                 label: "Mother tongue" },
   { value: "visible minority",              label: "Visible minority" },
