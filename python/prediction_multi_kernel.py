@@ -18,7 +18,9 @@ from data_loader import load_population_series
 from permits import load_permits
 from prediction import normalize_neighbourhood, load_permit_features, _get_permit_features_for, fit_gp, fit_gp_da, fit_gp_per_sample, _compute_shap
 from pathlib import Path
-old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
+BASE = Path("/app/data")
+
+old_weights = pd.read_parquet(str(BASE / 'weights/158_to_140.parquet'))
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique().tolist()
 

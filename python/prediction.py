@@ -13,8 +13,7 @@ from data_loader import load_population_series
 from permits import _get_permit_features_for
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-BASE = ROOT_DIR / "data"
+BASE = Path("/app/data")
 
 old_weights = pd.read_parquet(str(BASE / 'weights/158_to_140.parquet'))
 

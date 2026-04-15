@@ -3,8 +3,7 @@ import pandas as pd
 from pathlib import Path
 from functools import lru_cache
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-BASE = ROOT_DIR / "data"
+BASE = Path("/app/data")
 
 @lru_cache(maxsize=1)
 def load_permits() -> pd.DataFrame:
