@@ -8,7 +8,8 @@ import geopandas as gpd
 import pandas as pd
 from pathlib import Path
 
-BASE = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+BASE = ROOT_DIR / "data"
 
 POPULATION_LABELS = {
     2021: "Population, 2021",  

@@ -19,7 +19,7 @@ import pandas as pd
 import statistics
 
 # import the weight "Translator" fn 
-weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
+weights_df = pd.read_parquet("data/weights/140_to_158.parquet")
 
 # training wheels for the RAG
 ENRICHMENTS = {
