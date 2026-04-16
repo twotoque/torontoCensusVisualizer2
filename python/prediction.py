@@ -21,6 +21,13 @@ split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[ old_weights['AREA_NAME_1'].isin(split_old)]['AREA_NAME_2'].unique().tolist()
 
+PERMIT_FEATURES = [
+    "permit_count", "units_created", "units_lost",
+    "net_units", "total_cost", "residential_permits", "demolition_permits",
+]
+
+BASE_FEATURES = ["year", "prev_pop", "growth_prev"]
+
 def get_predecessor_neighbourhoods(neighbourhood: str) -> list[dict]:
     """Find all 140-neighbourhoods that came from the same old 158 source."""
     old_sources = old_weights[
@@ -87,28 +94,6 @@ def fit_gp_da(years, values, neighbourhood_name, true_2021_value=None):
     gp.fit(X_norm, y_scaled)
 
     return gp, x_min, x_max, y_scaler        
-
-def fit_gp_per_sample(years, values, is_stable=True):
-    """Fit a Gaussian Process to (years, population) data."""
-    X = years.reshape(-1, 1).astype(float)
-    y = values.astype(float)
-    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
-
-    if not is_stable:
-        # Higher noise on pre-2021 synthetic points, lower on 2021 actual
-        alpha = np.where(years < 2021, 500.0, 10.0)  
-    else:
-        alpha = 1e-10 
-
-    kernel = RBF(length_scale=0.3, length_scale_bounds=(0.01, 10)) \
-           + WhiteKernel(noise_level=0.1, noise_level_bounds=(1e-3, 1))
-
-    gp = GaussianProcessRegressor(
-        kernel=kernel, alpha=alpha,
-        n_restarts_optimizer=5, normalize_y=True
-    )
-    gp.fit(X_norm, y)
-    return gp, X.min(), X.max()
 
 def fit_gp(years: np.ndarray, values: np.ndarray):
     """Fit a Gaussian Process to (years, population) data."""
@@ -243,12 +228,6 @@ def forecast(
     }
 
 
-PERMIT_FEATURES = [
-    "permit_count", "units_created", "units_lost",
-    "net_units", "total_cost", "residential_permits", "demolition_permits",
-]
-
-BASE_FEATURES = ["year", "prev_pop", "growth_prev"]
 
 
 def _compute_shap(

@@ -273,3 +273,26 @@ def compare_kernels_single_neighbourhood(
         )
         for kernel_type in KERNEL_CONFIGS.keys()
     }
+
+
+def fit_gp_per_sample(years, values, is_stable=True):
+    """Fit a Gaussian Process to (years, population) data."""
+    X = years.reshape(-1, 1).astype(float)
+    y = values.astype(float)
+    X_norm = (X - X.min()) / (X.max() - X.min() + 1e-8)
+
+    if not is_stable:
+        # Higher noise on pre-2021 synthetic points, lower on 2021 actual
+        alpha = np.where(years < 2021, 500.0, 10.0)  
+    else:
+        alpha = 1e-10 
+
+    kernel = RBF(length_scale=0.3, length_scale_bounds=(0.01, 10)) \
+           + WhiteKernel(noise_level=0.1, noise_level_bounds=(1e-3, 1))
+
+    gp = GaussianProcessRegressor(
+        kernel=kernel, alpha=alpha,
+        n_restarts_optimizer=5, normalize_y=True
+    )
+    gp.fit(X_norm, y)
+    return gp, X.min(), X.max()
