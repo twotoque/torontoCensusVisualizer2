@@ -362,3 +362,7 @@ def get_median(year: int, row: int):
         median_val = statistics.median(values)
     
     return JSONResponse(content=_sanitize({"median": median_val}))
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
