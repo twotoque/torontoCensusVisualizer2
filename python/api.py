@@ -2,6 +2,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
@@ -13,7 +14,7 @@ from figures import build_bar, build_map, build_stack, export_pdf, search_rows
 from rag import semantic_search, find_row_in_year
 from ask import answer as ask_answer
 import math
-
+from pathlib import Path
 from functools import lru_cache
 
 from prediction import forecast, compare_neighbourhoods
@@ -81,10 +82,15 @@ def resolve_row(census_df: pd.DataFrame, row: int, id_col: str | None = None) ->
     return row - 2  # 2021 convention
 
 @lru_cache(maxsize=1)
-def _load_weights() -> pd.DataFrame:
-    return pd.read_parquet(
-        "/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet"
-    )
+def _load_weights():
+    ROOT_DIR = Path(__file__).resolve().parent.parent
+    if os.path.exists("/app/data"):
+        BASE = Path("/app/data")
+    else:
+        BASE = ROOT_DIR / "data"
+        
+    return pd.read_parquet(str(BASE / 'weights/140_to_158.parquet'))
+
 
 
 
