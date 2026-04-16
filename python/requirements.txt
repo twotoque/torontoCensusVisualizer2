@@ -1,0 +1,20 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi==0.109.0
+uvicorn==0.27.0
+pandas
+pyarrow
+numpy
+geopandas
+scikit-learn
+shap
+plotly
+chromadb
+grpcio==1.62.2
+grpcio-tools==1.62.2
+protobuf==4.25.3
+torch==2.6.0+cpu
+transformers==4.38.0
+huggingface_hub
+httpx==0.27.0
+pathlib

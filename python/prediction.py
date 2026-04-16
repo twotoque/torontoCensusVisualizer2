@@ -11,7 +11,12 @@ from sklearn.preprocessing import StandardScaler
 import shap
 from data_loader import load_population_series
 from permits import _get_permit_features_for
-old_weights = pd.read_parquet('/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/158_to_140.parquet')
+from pathlib import Path
+
+BASE = Path("/app/data")
+
+old_weights = pd.read_parquet(str(BASE / 'weights/158_to_140.parquet'))
+
 split_old = old_weights[old_weights['weight'] < 0.95]['AREA_NAME_1'].unique()
 
 SPLIT_NEIGHBOURHOOD_LIST = old_weights[ old_weights['AREA_NAME_1'].isin(split_old)]['AREA_NAME_2'].unique().tolist()

@@ -15,11 +15,12 @@ from rag import semantic_search, semantic_search_with_disambiguation, find_row_i
 from data_loader import load_census
 from census_registry import get_paths, CENSUS_YEARS
 import pandas as pd
-
+from pathlib import Path
 import statistics
 
 # import the weight "Translator" fn 
-weights_df = pd.read_parquet("/Users/dereksong/Documents/torontoCensusVisualizer2/data/weights/140_to_158.parquet")
+BASE = Path("/app/data")
+weights_df = pd.read_parquet("data/weights/140_to_158.parquet")
 
 # training wheels for the RAG
 ENRICHMENTS = {

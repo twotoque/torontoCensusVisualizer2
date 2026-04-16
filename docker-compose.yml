@@ -1,0 +1,41 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: python/Dockerfile
+    command: python3 -m uvicorn api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+
+  grpc-server:
+    build:
+      context: .
+      dockerfile: python/Dockerfile
+    command: python3 grpc_server.py
+    expose:
+      - "50051"
+    volumes:
+      - ./data:/app/data
+
+  go-bridge:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - grpc-server
+  frontend:
+    build:
+      context: .
+      dockerfile: torontoCensusVisualizer/Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./torontoCensusVisualizer:/app
+      - /app/node_modules
+
+
+      

@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from functools import lru_cache
 
-BASE = Path("/Users/dereksong/Documents/torontoCensusVisualizer2/data")
+BASE = Path("/app/data")
 
 @lru_cache(maxsize=1)
 def load_permits() -> pd.DataFrame:
