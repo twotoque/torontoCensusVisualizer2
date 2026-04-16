@@ -76,12 +76,11 @@ def load_geo(path: str) -> tuple[gpd.GeoDataFrame, dict]:
     Returns (GeoDataFrame, plotly-ready FeatureCollection dict).
     """
     gdf = gpd.read_file(path)
-    # normalize neighbourhood names by stripping trailing " (number)" suffix (for 2016 and earlier only)
     if "AREA_NAME" in gdf.columns:
-       gdf["AREA_NAME"] = (
+        gdf["AREA_NAME"] = (
             gdf["AREA_NAME"]
             .str.replace(r'\s*\(\d+\)$', '', regex=True)
-            .str.replace(r'St\.James', 'St. James', regex=False)
+            .str.replace(r'St\.James', 'St. James', regex=True)  
             .str.strip()
         )
     geo_dict = json.loads(gdf.to_json())
