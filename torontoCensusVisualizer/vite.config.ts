@@ -7,12 +7,14 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss(),
     visualizer({
-      open: true,            // This opens the report in your browser automatically
-      filename: 'stats.html', // The name of the file it generates
-      gzipSize: true,        // Shows you what the size will be when compressed
+      open: true,            
+      filename: 'stats.html', 
+      gzipSize: true,       
       brotliSize: true,
     }),],
   server: {
+    host: true,
+    allowedHosts: ['beta.torontocensusvisualizer.com'],
     proxy: {
       '/api': {
         target: 'http://api:8000', 

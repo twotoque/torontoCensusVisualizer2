@@ -9,3 +9,5 @@ __pycache__/
 key
 id_rsa
 .DS_Store
+
+data/chroma/chroma.sqlite3
