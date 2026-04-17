@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: python/Dockerfile
-    restart: unless-stopped
     command: python3 -m uvicorn api:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
@@ -13,16 +12,15 @@ services:
       - PYTHONUNBUFFERED=1
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()"]
-      interval: 10s
+      interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 15s
+      start_period: 10s
 
   grpc-server:
     build:
       context: .
       dockerfile: python/Dockerfile
-    restart: unless-stopped 
     command: python3 grpc_server.py
     expose:
       - "50051"
@@ -32,15 +30,15 @@ services:
       - PYTHONUNBUFFERED=1
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('localhost', 50051), timeout=2)"]
-      interval: 10s
+      interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 10s
 
   go-bridge:
     build:
       context: ./go
       dockerfile: Dockerfile
-    restart: unless-stopped 
     ports:
       - "8080:8080"
     depends_on:
@@ -51,25 +49,28 @@ services:
     build:
       context: .
       dockerfile: torontoCensusVisualizer/Dockerfile
-    restart: unless-stopped 
     ports:
-      - "80:80" 
+      - "5173:5173"
+    volumes:
+      - ./torontoCensusVisualizer:/app
+      - node_modules:/app/node_modules
     depends_on:
       - go-bridge
 
   reverse-proxy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
+      image: caddy:2-alpine
+      restart: unless-stopped
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./Caddyfile:/etc/caddy/Caddyfile
+        - caddy_data:/data
+        - caddy_config:/config
+      depends_on:
+        - frontend
 
 volumes:
+  node_modules:
   caddy_data:
   caddy_config:
