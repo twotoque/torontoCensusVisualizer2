@@ -52,6 +52,8 @@ services:
       context: .
       dockerfile: torontoCensusVisualizer/Dockerfile
     restart: unless-stopped 
+    ports:
+      - "80:80" 
     depends_on:
       - go-bridge
 
