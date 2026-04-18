@@ -1,4 +1,5 @@
-FROM node:22-alpine
+# Build stage
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -7,6 +8,8 @@ RUN npm install
 
 COPY torontoCensusVisualizer/ .
 
-EXPOSE 5173
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+FROM caddy:2-alpine
+
+COPY --from=builder /app/dist /srv/frontend

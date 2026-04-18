@@ -1,3 +1,11 @@
 beta.torontocensusvisualizer.com {
-    reverse_proxy frontend:5173
+    handle /api/* {
+        reverse_proxy go-bridge:8080
+    }
+
+    handle {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
 }
