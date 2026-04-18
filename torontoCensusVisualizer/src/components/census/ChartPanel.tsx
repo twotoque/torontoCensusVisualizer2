@@ -35,50 +35,54 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
 
   // Filter and rebuild bar chart with selected neighbourhoods
   const filteredBarFig = useMemo(() => {
-    if (!barFig?.data?.[0]) {
-      return barFig;
-    }
-
+    if (!barFig?.data?.[0]) return barFig;
     const originalData = barFig.data[0];
     const indices = visibleNeighbourhoods.map(n =>
       (originalData.x as string[]).indexOf(n)
     );
-
-    const filteredX = indices.map(i => originalData.x[i]);
-    const filteredY = indices.map(i => originalData.y[i]);
-
     return {
       ...barFig,
       data: [
         {
           ...originalData,
-          x: filteredX,
-          y: filteredY,
+          x: indices.map(i => originalData.x[i]),
+          y: indices.map(i => originalData.y[i]),
         },
       ],
       layout: {
         ...barFig.layout,
-        xaxis: {
-          ...barFig.layout?.xaxis,
-          autorange: true,
-        },
+        xaxis: { ...barFig.layout?.xaxis, autorange: true },
       },
     };
   }, [barFig, visibleNeighbourhoods]);
 
+  const mapLayout = useMemo(() => ({
+    ...mapFig?.layout,
+    autosize: true,
+    paper_bgcolor: "transparent",
+    plot_bgcolor: "transparent",
+    margin: { t: 10, b: 10, l: 10, r: 10 },
+    title: undefined,
+  }), [mapFig?.layout]);
+
+  const barLayout = useMemo(() => ({
+    ...filteredBarFig?.layout,
+    autosize: true,
+    paper_bgcolor: "transparent",
+    plot_bgcolor: "transparent",
+    margin: { t: 10, b: 60, l: 40, r: 10 },
+    title: undefined,
+  }), [filteredBarFig?.layout]);
+
   const toggleNeighbourhood = (neighbourhood: string) => {
-    const newSelected = new Set(selectedNeighbourhoods);
-    if (newSelected.has(neighbourhood)) {
-      newSelected.delete(neighbourhood);
-    } else {
-      newSelected.add(neighbourhood);
-    }
-    setSelectedNeighbourhoods(newSelected);
+    setSelectedNeighbourhoods(prev => {
+      const next = new Set(prev);
+      next.has(neighbourhood) ? next.delete(neighbourhood) : next.add(neighbourhood);
+      return next;
+    });
   };
 
-  const clearFilters = () => {
-    setSelectedNeighbourhoods(new Set());
-  };
+  const clearFilters = () => setSelectedNeighbourhoods(new Set());
 
   const cardClass =
     "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]";
@@ -96,17 +100,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
           <PlotGeo
             key={`${year}-${row}`}
             data={mapFig.data}
-            layout={{
-              ...mapFig.layout,
-              autosize: true,
-              paper_bgcolor: "transparent",
-              plot_bgcolor: "transparent",
-              margin: { t: 10, b: 10, l: 10, r: 10 },
-              title: undefined,
-            }}
+            layout={mapLayout}
             style={{ width: "100%", height: 300 }}
           />
-          
         </div>
       )}
 
@@ -180,14 +176,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
           <Plot
             key={`bar-${year}-${row}-${visibleNeighbourhoods.length}`}
             data={filteredBarFig.data}
-            layout={{
-              ...filteredBarFig.layout,
-              autosize: true,
-              paper_bgcolor: "transparent",
-              plot_bgcolor: "transparent",
-              margin: { t: 10, b: 60, l: 40, r: 10 },
-              title: undefined,
-            }}
+            layout={barLayout}
             style={{ width: "100%", height: 260 }}
           />
         </div>
