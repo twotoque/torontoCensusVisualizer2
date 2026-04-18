@@ -10,6 +10,8 @@ COPY torontoCensusVisualizer/ .
 
 RUN npm run build
 
-FROM caddy:2-alpine
+FROM nginx:alpine
 
-COPY --from=builder /app/dist /srv/frontend
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
