@@ -131,7 +131,7 @@ export const HomePage: React.FC = () => {
                 </h2>
                 </div>
                 <p>Project by <a href="https://www.twotoque.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Derek Song</a>.</p> 
-                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/toronto-census-visualizer" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>.</p>
+                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>.</p>
               
           </div> 
 
