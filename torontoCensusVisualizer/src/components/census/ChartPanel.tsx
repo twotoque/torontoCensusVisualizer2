@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import Plot from "../Plot";
 import { ChevronDown, X } from "lucide-react";
 import PlotGeo from "../PlotGeo";
-
+import { Spinner } from "../Spinner";
 interface ChartPanelProps {
   mapFig: any;
   barFig: any;
@@ -90,9 +90,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   return (
     <div className="flex basis-[60%] flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 pr-2">
       {loading && (
-        <div className="py-5 text-center text-xs font-medium text-[var(--text-muted)]">
-          Loading…
-        </div>
+        <div className="flex h-[300px] items-center justify-center">
+              {loading && <Spinner />}
+            </div>
       )}
 
       {mapFig && (

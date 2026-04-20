@@ -3,6 +3,7 @@ import { useSearchSlot } from "../SearchSlotContext";
 import { YearTabs } from "../components/census/YearTabs";
 import Plot from "../components/Plot";
 import { X } from "lucide-react";
+import { Spinner } from "../components/Spinner";
 
 const API = "/api";
 
@@ -317,7 +318,7 @@ export const ComparePage: React.FC = () => {
         <div className="flex basis-[70%] flex-col gap-3 overflow-y-auto">
           {loading && (
             <div className="py-5 text-center text-xs font-medium text-[var(--text-muted)]">
-              Loading…
+              <Spinner />
             </div>
           )}
 

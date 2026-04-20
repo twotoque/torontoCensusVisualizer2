@@ -68,6 +68,10 @@ def _load(year: int):
     return geo_gdf, geo_dict, wards_gdf, census_df, paths["label_col"], paths["wards_name_col"], paths.get("id_col")
 
 
+@lru_cache(maxsize=8)
+def _load_cached(year: int):
+    return _load(year)
+
 def resolve_row(census_df: pd.DataFrame, row: int, id_col: str | None = None) -> int:
     """Convert a user-facing row identifier to a 0-based DataFrame index.
 
@@ -205,22 +209,22 @@ def get_years():
 
 @app.get("/census/{year}/search")
 def search(year: int, q: str):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     return JSONResponse(content={"results": search_rows(census_df, q, label_col=label_col, id_col=id_col)})
 
 @app.get("/census/{year}/row/{row}/map")
 def get_map(year: int, row: int):
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load_cached(year)
     return _to_json(build_map(geo_gdf, geo_dict, wards_gdf, census_df, resolve_row(census_df, row, id_col), label_col, wards_name_col))
 
 @app.get("/census/{year}/row/{row}/bar")
 def get_bar(year: int, row: int):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     return _to_json(build_bar(census_df, resolve_row(census_df, row, id_col), label_col))
 
 @app.post("/census/{year}/stack")
 def get_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     indices = [resolve_row(census_df, r, id_col) for r in body.rows]
     return _to_json(build_stack(census_df, indices, label_col))
 
@@ -229,7 +233,7 @@ def get_export(year: int, row: int, kind: str):
     if kind not in ("map", "bar"):
         raise HTTPException(status_code=400, detail="kind must be 'map' or 'bar'")
 
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load(year)
+    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load_cached(year)
     idx = resolve_row(census_df, row, id_col)
 
     if kind == "map":
@@ -246,7 +250,7 @@ def get_export(year: int, row: int, kind: str):
 
 @app.post("/census/{year}/export/stack")
 def export_stack(year: int, body: StackRequest):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     indices = [resolve_row(census_df, r, id_col) for r in body.rows]
     fig_dict = build_stack(census_df, indices, label_col)
     pdf_bytes = export_pdf(fig_dict, "stack")
@@ -339,7 +343,7 @@ def get_cell(year: int, row_id: int, neighbourhood: str, context_rows: int = 6):
 
 @app.get("/census/{year}/row/{row}/median")
 def get_median(year: int, row: int):
-    _, _, _, census_df, label_col, *_, id_col = _load(year)
+    _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     idx = resolve_row(census_df, row, id_col)
     if not (0 <= idx < len(census_df)):
         raise HTTPException(status_code=404, detail=f"row {row} not found")
