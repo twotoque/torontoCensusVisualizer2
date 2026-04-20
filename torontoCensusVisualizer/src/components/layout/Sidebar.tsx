@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 // enmoji icons placeholder
 const NAV = [
-  { id: "chat",   path: "/",       icon: "💬", label: "Ask" },
+  { id: "home", path: "/", icon: "🏠", label: "Home" },
+  { id: "ask", path: "/ask", icon: "💬", label: "Ask" },
   { id: "census", path: "/census", icon: "📊", label: "Census Explorer" },
   { id: "prediction", path: "/prediction", icon: "📈", label: "Prediction" },
   { id: "compare", path: "/compare", icon: "⚖️", label: "Compare" },

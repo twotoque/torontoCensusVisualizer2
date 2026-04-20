@@ -15,6 +15,7 @@ import {
 } from "./colours";
 import { ComparePage } from "./pages/ComparePage";
 import { CrossRowStatsPage } from "./pages/CrossrowPage";
+import { HomePage } from "./pages/HomePage";
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? detectSystemTheme());
@@ -36,7 +37,9 @@ export default function App() {
         <Sidebar />
         <main className="flex flex-1 flex-col overflow-hidden">
           <Routes>
-            <Route path="/" element={<ChatPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/ask" element={<ChatPage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/census" element={<CensusPage />} />
             <Route path="/prediction" element={<PredictionPage />} />
             <Route path="/compare" element={<ComparePage />} />
