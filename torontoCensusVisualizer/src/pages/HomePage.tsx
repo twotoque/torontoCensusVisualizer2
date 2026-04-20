@@ -4,7 +4,6 @@ import headerImg from "../assets/Header img.png";
 import {
   ArrowRight,
   ChevronRight,
-  Github,
   Map,
   LineChart,
   MessageSquareText,
@@ -60,7 +59,7 @@ export const HomePage: React.FC = () => {
                   and review experimental forecasts for 2026 and 2031, all with AI-powered search and explanations.
                 </p>
                 <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-              <strong>Toronto Census Visualizer is currently on beta testing and some results may be inaccurate.</strong> Treat results as experimental. If you find an error, feel free to submit an issue / create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">GitHub repository</a>. 
+              <strong>Toronto Census Visualizer is currently on beta testing and some results may be inaccurate.</strong> Treat results as experimental. This tool is not endorsed or affiliated with the City of Toronto or Statistics Canada. If you find an error, feel free to submit an issue / create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">GitHub repository</a>. 
             </div>
               </div>
 
@@ -131,7 +130,7 @@ export const HomePage: React.FC = () => {
                 </h2>
                 </div>
                 <p>Project by <a href="https://www.twotoque.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Derek Song</a>.</p> 
-                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>.</p>
+                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>. As such, please use at your own risk.</p>
               
           </div> 
 
