@@ -4,10 +4,10 @@ import headerImg from "../assets/Header img.png";
 import {
   ArrowRight,
   ChevronRight,
+  Github,
   Map,
   LineChart,
   MessageSquareText,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react";
 
@@ -47,10 +47,10 @@ export const HomePage: React.FC = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(75,108,183,0.16),transparent_32%),radial-gradient(circle_at_top_right,rgba(17,94,89,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.4),transparent_22%)]" />
         <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)] opacity-60" />
 
-        <section className="relative mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 lg:px-10 lg:py-12">
+        <section className="relative mx-auto md:pt-10 lg:pt-16 flex max-w-7xl flex-col gap-8 px-6 py-10 lg:px-10 lg:py-12">
 
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
-            <div className="space-y-7">
+            <div className="space-y-7 ">
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
                   View 20+ years of Toronto census data with AI-driven insights easily.
@@ -60,7 +60,7 @@ export const HomePage: React.FC = () => {
                   and review experimental forecasts for 2026 and 2031, all with AI-powered search and explanations.
                 </p>
                 <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-              <strong>Toronto Census Visualizer is currently on beta testing and some results may be inaccurate.</strong> Treat results as experimental. 
+              <strong>Toronto Census Visualizer is currently on beta testing and some results may be inaccurate.</strong> Treat results as experimental. If you find an error, feel free to submit an issue / create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">GitHub repository</a>. 
             </div>
               </div>
 
@@ -100,6 +100,12 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
+
+            <div className="space-y-10 pt-20 space-y-4">
+              <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-3xl lg:text-3xl">
+                What makes ours different? 
+              </h2>
+          </div> 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {featureCards.map(({ icon: Icon, title, copy, route }) => (
               <button
@@ -116,6 +122,19 @@ export const HomePage: React.FC = () => {
               </button>
             ))}
           </div>
+
+
+            <div className="space-y-10 pace-y-4">
+              <div className="flex items-center pb-0 mb-3">
+                <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-3xl lg:text-3xl">
+                  Credits
+                </h2>
+                </div>
+                <p>Project by <a href="https://www.twotoque.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Derek Song</a>.</p> 
+                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/toronto-census-visualizer" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>.</p>
+              
+          </div> 
+
         </section>
       </div>
     </div>
