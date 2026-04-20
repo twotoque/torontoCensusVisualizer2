@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { formatMetric, type ChangeRow } from "./types";
+import { Spinner } from "../Spinner";
 
 interface StatsPanelProps {
   changeData: ChangeRow[];
@@ -67,7 +68,10 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
       <div className={cardClass}>
         <div className={labelClass}>City of Toronto Median</div>
         {cityMedian === null ? (
-          <div className="py-3 text-sm text-[var(--text-muted)]">Loading…</div>
+          
+          <div className="flex h-[300px] items-center justify-center">
+                <Spinner />
+              </div>
         ) : (
           <div className="flex items-baseline justify-between border-b border-dashed border-[var(--border)] py-2 last:border-b-0">
             <span className="text-sm font-semibold text-[var(--text)]">Median</span>
