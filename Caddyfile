@@ -1,11 +1,17 @@
 beta.torontocensusvisualizer.com {
     handle /api/* {
-        reverse_proxy go-bridge:8080
+        uri strip_prefix /api
+        reverse_proxy api:8000
     }
 
     handle {
-        root * /srv/frontend
-        try_files {path} /index.html
-        file_server
+        reverse_proxy frontend:80
     }
+
+    header X-Content-Type-Options nosniff
+    header X-Frame-Options DENY
+    header X-XSS-Protection "1; mode=block"
+    header Referrer-Policy strict-origin-when-cross-origin
+
+    encode gzip
 }
