@@ -1,27 +1,17 @@
 beta.torontocensusvisualizer.com {
-    # API requests go to the API service
-    reverse_proxy /api/* api:8000
-    
-    # Everything else goes to frontend
-    reverse_proxy / frontend:80
-    
-    # Security headers
-    header / X-Content-Type-Options nosniff
-    header / X-Frame-Options DENY
-    header / X-XSS-Protection "1; mode=block"
-    header / Referrer-Policy strict-origin-when-cross-origin
-    header / Permissions-Policy "geolocation=(), microphone=(), camera=()"
-    
-    # Rate limiting (100 req/min per IP)
-    rate_limit {
-        zone dynamic {
-            key {
-                http.request.remote.ip
-            }
-        }
-        100
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000
     }
-    
-    # Gzip compression
+
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    header X-Content-Type-Options nosniff
+    header X-Frame-Options DENY
+    header X-XSS-Protection "1; mode=block"
+    header Referrer-Policy strict-origin-when-cross-origin
+
     encode gzip
 }
