@@ -22,7 +22,6 @@ const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
       .then(module => {
         if (alive) {
           setPlotly(module);
-          setLoadError(null);
         }
       })
       .catch((error: unknown) => {
@@ -30,7 +29,7 @@ const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
         if (error instanceof Error) {
           setLoadError(error.message);
         } else {
-          setLoadError("Unknown error");
+          setLoadError("Failed to load Plotly library.");
         }
       });
     return () => {
