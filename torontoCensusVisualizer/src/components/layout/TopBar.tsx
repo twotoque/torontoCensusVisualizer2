@@ -3,6 +3,8 @@
 // Accepts an optional `searchSlot` for per-page content in the centre.
 
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { House } from "lucide-react";
 import { type Theme } from "../../colours";
 
 const IconSun = () => (
@@ -29,20 +31,32 @@ interface TopBarProps {
   searchSlot?: React.ReactNode;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ theme, onToggle, searchSlot }) => (
-  <header className="flex h-14 flex-shrink-0 items-center gap-4 bg-[var(--accent)] px-5 text-white shadow-[var(--shadow-md)]">
-    <span className="whitespace-nowrap text-sm font-bold tracking-wide">Toronto Census Visualizer</span>
-    {searchSlot ? (
-      <div className="flex flex-1 max-w-xl">{searchSlot}</div>
-    ) : (
-      <div className="flex flex-1" />
-    )}
-    <button
-      onClick={onToggle}
-      title="Toggle theme"
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
-    >
-      {theme === "light" ? <IconMoon /> : <IconSun />}
-    </button>
-  </header>
-);
+export const TopBar: React.FC<TopBarProps> = ({ theme, onToggle, searchSlot }) => {
+  const navigate = useNavigate();
+
+  return (
+    <header className="flex h-14 flex-shrink-0 items-center gap-4 bg-[var(--accent)] px-5 text-white shadow-[var(--shadow-md)]">
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        title="Home"
+        aria-label="Home"
+        className="inline-flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-sm font-bold tracking-wide transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+      >
+        <span>Toronto Census Visualizer</span>
+      </button>
+      {searchSlot ? (
+        <div className="flex flex-1 max-w-xl">{searchSlot}</div>
+      ) : (
+        <div className="flex flex-1" />
+      )}
+      <button
+        onClick={onToggle}
+        title="Toggle theme"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+      >
+        {theme === "light" ? <IconMoon /> : <IconSun />}
+      </button>
+    </header>
+  );
+};
