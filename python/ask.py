@@ -613,6 +613,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
     else:
         search_query = cleaned_metric or query
+        available_years_desc = sorted(CENSUS_YEARS.keys(), reverse=True)
 
         # When the user specified a year explicitly, scope the disambiguation search
         # to that year only. Searching year=None causes cross-year label collisions
@@ -626,7 +627,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
         if not results:
             if not explicit_year:
-                for fallback_year in sorted((2001, 2006, 2011, 2016, 2021), reverse=True):
+                for fallback_year in available_years_desc:
                     if fallback_year in years:
                         continue
                     results, needs_disambiguation = semantic_search_with_disambiguation(
@@ -654,7 +655,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         row_ids = _get_row_ids(query, neighbourhoods, years)
         if not row_ids:
             if not explicit_year:
-                fallback_years = [y for y in sorted((2001, 2006, 2011, 2016, 2021), reverse=True) if y not in years]
+                fallback_years = [y for y in available_years_desc if y not in years]
                 for fallback_year in fallback_years:
                     row_ids = _get_row_ids(query, neighbourhoods, [fallback_year])
                     if row_ids:
