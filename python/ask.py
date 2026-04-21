@@ -29,12 +29,23 @@ weights_df = pd.read_parquet(BASE / "weights/140_to_158.parquet")
 ENRICHMENTS = {
     "population":        "population",
     "income":            "average total income",
-    "household income":  "average household total income",
-    "housing":           "Private dwellings occupied by usual residents",
-    "dwelling units":    "Private dwellings occupied by usual residents",
-    "dwellings":         "Private dwellings occupied by usual residents",
+    "household income":  "Average total income of household",
+    "housing":           "Total - Occupied private dwellings by structural type of dwelling",
+    "dwelling units":    "Total - Occupied private dwellings by structural type of dwelling",
+    "dwellings":         "Total - Occupied private dwellings by structural type of dwelling",
     "neighbourhood number": "Neighbourhood Number",
 }
+
+METRIC_PATTERNS = [
+    (re.compile(r"\bvisible minority\b"), "Total visible minority population"),
+    (re.compile(r"\bmother tongue\b"), "Total population by mother tongue"),
+    (re.compile(r"\bemployment income\b"), "Average employment income"),
+    (re.compile(r"\baverage household total income\b"), "Average total income of household"),
+    (re.compile(r"\bhousehold total income\b"), "Average total income of household"),
+    (re.compile(r"\baverage total income\b"), "Average total income of household"),
+    (re.compile(r"\bprivate dwellings\b"), "Total - Occupied private dwellings by structural type of dwelling"),
+    (re.compile(r"\bdwelling units?\b"), "Total - Occupied private dwellings by structural type of dwelling"),
+]
 
 BLOCKED_LABELS = {
     "Neighbourhood Number",
@@ -233,19 +244,26 @@ def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]
             cleaned = re.sub(word, " ", cleaned)
         else:
             cleaned = cleaned.replace(word, " ")
-    
+
     cleaned = " ".join(cleaned.split()).strip()
+    for pattern, replacement in METRIC_PATTERNS:
+        if pattern.search(cleaned):
+            return replacement
     return ENRICHMENTS.get(cleaned, cleaned)
+
 
 
 def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dict:
     row_ids = {}
     for year in years:
         search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
+
         # append year to help find year-specific rows like "Population, 2011"
         if search_query:
             if year == 2021 and "population" in search_query.lower():
                 search_query = "Total - Age groups of the population - 25% sample data"
+            elif year == 2021 and "mother tongue" in search_query.lower():
+                search_query = "Total - Mother tongue for the population in private households - 25% sample data"
             elif str(year) not in search_query:
                 search_query = f"{search_query} {year}"
 
@@ -257,12 +275,12 @@ def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dic
         year_str = str(year)
         year_match = [r for r in results if year_str in r["label"]]
         if year_match:
-            row_ids[year] = year_match[0]["row_id"]  # always prefer year match
+            row_ids[year] = year_match[0]["row_id"] # always prefer year match
         elif results[0]["score"] > 0.05:
             row_ids[year] = results[0]["row_id"]
 
-    
     return row_ids
+
 # answer tempaltes
 
 def _fmt(value) -> str:
@@ -352,6 +370,11 @@ def _template_ranking(values, neighbourhoods, years, metric) -> str:
 
 def _template_cross_neighbourhood(values, neighbourhoods, years, metric) -> str:
     year  = years[0]
+    if len(neighbourhoods) < 2:
+        if len(neighbourhoods) == 1:
+            return _template_single_value(values, neighbourhoods, years, metric)
+        return f"Need two neighbourhoods to compare {metric} in {year}."
+
     n1, n2 = neighbourhoods[0], neighbourhoods[1]
     v1    = values.get(year, {}).get(n1)
     v2    = values.get(year, {}).get(n2)
@@ -466,6 +489,16 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     neighbourhoods = parsed["neighbourhoods"]
     years          = parsed["years"]
     cleaned_metric = _clean_query_for_rag(query, neighbourhoods, years)
+    explicit_year  = bool(re.search(r"\b(?:2001|2006|2011|2016|2021)\b", query))
+
+    neighbourhoods = [n for n in neighbourhoods if len(n) > 3]
+
+    # Guard: single year can never be a comparison
+    if intent == "compare_years" and len(years) == 1:
+        intent = "single_value"
+
+    if intent == "cross_neighbourhood" and len(neighbourhoods) < 2:
+        intent = "single_value" if neighbourhoods else "ranking"
 
     # 2. if it is a trend, do a special multi-year search and answer generation flow
     if intent == "trend":
@@ -580,9 +613,28 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         display_metric = confirmed_results[0]["label"].strip() if confirmed_results else query
     else:
         search_query = cleaned_metric or query
+
+        # When the user specified a year explicitly, scope the disambiguation search
+        # to that year only. Searching year=None causes cross-year label collisions
+        # (e.g. the same metric indexed under 2016 AND 2021 both appear as candidates),
+        # which triggers unnecessary disambiguation prompts.
+        search_year = years[0] if explicit_year and len(years) == 1 else None
+
         results, needs_disambiguation = semantic_search_with_disambiguation(
-            search_query, year=None, limit=5
+            search_query, year=search_year, limit=5
         )
+
+        if not results:
+            if not explicit_year:
+                for fallback_year in sorted((2001, 2006, 2011, 2016, 2021), reverse=True):
+                    if fallback_year in years:
+                        continue
+                    results, needs_disambiguation = semantic_search_with_disambiguation(
+                        search_query, year=fallback_year, limit=5
+                    )
+                    if results:
+                        years = [fallback_year]
+                        break
 
         if not results:
             return {
@@ -601,18 +653,22 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
         row_ids = _get_row_ids(query, neighbourhoods, years)
         if not row_ids:
+            if not explicit_year:
+                fallback_years = [y for y in sorted((2001, 2006, 2011, 2016, 2021), reverse=True) if y not in years]
+                for fallback_year in fallback_years:
+                    row_ids = _get_row_ids(query, neighbourhoods, [fallback_year])
+                    if row_ids:
+                        years = [fallback_year]
+                        break
+
+        if not row_ids:
             return {
                 "answer": "Could not find a matching census metric for your query. As I am a local AI model trained on Toronto census data, I can only answer questions about Toronto neighbourhoods and census years. Try using the prompt builder below to rephrase your question.",
                 "intent": intent, "metric": results[0]["label"], "context": {}, "disambiguation": None,
             }
 
-        first_year   = next(iter(row_ids))
-        year_results = semantic_search(
-            f"{_clean_query_for_rag(query, neighbourhoods, [first_year]) or query} {first_year}",
-            year=first_year, limit=1,
-        )
-        display_metric = year_results[0]["label"].strip() if year_results else results[0]["label"]
-
+        first_year   = next(iter(row_ids))  
+        display_metric = _get_label_for_row(row_ids[first_year], first_year) or results[0]["label"]
     # 4. Fetch values
     if intent == "ranking":
         year = years[0]
