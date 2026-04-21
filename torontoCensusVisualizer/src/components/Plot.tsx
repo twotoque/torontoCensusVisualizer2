@@ -9,9 +9,11 @@ interface PlotProps {
   style?: React.CSSProperties;
 }
 
+type PlotlyApi = Awaited<ReturnType<typeof loadPlotlyBasic>>;
+
 const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [plotly, setPlotly] = useState<null | { react: Function; purge: Function; Plots: { resize: Function } }>(null);
+  const [plotly, setPlotly] = useState<PlotlyApi | null>(null);
 
   useEffect(() => {
     let alive = true;
