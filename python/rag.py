@@ -1,12 +1,19 @@
+import os
+
 import chromadb
 import torch
 from transformers import AutoTokenizer, AutoModel
 from functools import lru_cache
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_PATH = "./data/chroma"
+CHROMA_PATH = os.getenv("CHROMA_PATH", "/app/data/chroma" if os.path.exists("/app") else DEFAULT_PATH)
+
+os.makedirs(CHROMA_PATH, exist_ok=True)
 
 @lru_cache(maxsize=1)
 def _load_model():
+    
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModel.from_pretrained(MODEL_NAME)
     model.eval()
@@ -26,7 +33,7 @@ def _encode(text: str) -> list[float]:
     embedding = torch.nn.functional.normalize(embedding, p=2, dim=1)
     return embedding[0].tolist()
 
-_client = chromadb.PersistentClient(path="/app/data/chroma")
+_client = chromadb.PersistentClient(path=CHROMA_PATH)
 _col    = _client.get_collection("census_rows")
 
 

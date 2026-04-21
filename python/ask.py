@@ -8,6 +8,7 @@
 # Everything is localish 
 
 import math
+import os
 import re
 
 from query_parser import parse
@@ -19,7 +20,9 @@ from pathlib import Path
 import statistics
 
 # import the weight "Translator" fn 
-BASE = Path("/app/data")
+
+
+BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
 weights_df = pd.read_parquet("data/weights/140_to_158.parquet")
 
 # training wheels for the RAG

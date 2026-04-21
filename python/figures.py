@@ -77,7 +77,7 @@ def build_map(
 
     fig.update_layout(
         mapbox_style="carto-positron",
-        mapbox_zoom=10,
+        mapbox_zoom=8.8,
         mapbox_center={"lat": 43.710, "lon": -79.380},
         margin={"r": 0, "t": 60, "l": 0, "b": 0},
         title={

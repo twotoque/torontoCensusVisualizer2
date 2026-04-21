@@ -2,8 +2,9 @@
 import pandas as pd
 from pathlib import Path
 from functools import lru_cache
+import os
 
-BASE = Path("/app/data")
+BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
 
 @lru_cache(maxsize=1)
 def load_permits() -> pd.DataFrame:

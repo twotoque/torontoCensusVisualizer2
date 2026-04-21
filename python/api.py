@@ -384,10 +384,12 @@ def get_median(year: int, row: int):
             pass
     
     median_val = None
+    mean_val = None
     if values:
         median_val = statistics.median(values)
+        mean_val = statistics.mean(values)
     
-    return JSONResponse(content=_sanitize({"median": median_val}))
+    return JSONResponse(content=_sanitize({"median": median_val, "mean": mean_val}))
 
 @app.get("/health")
 def health():

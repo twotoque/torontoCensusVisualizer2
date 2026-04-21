@@ -1,6 +1,8 @@
 # prediction.py
 # GP forecasting + SHAP for census variables across neighbourhoods.
 
+import os
+
 import numpy as np
 import pandas as pd
 from functools import lru_cache
@@ -13,7 +15,7 @@ from data_loader import load_population_series
 from permits import _get_permit_features_for
 from pathlib import Path
 
-BASE = Path("/app/data")
+BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
 
 old_weights = pd.read_parquet(str(BASE / 'weights/158_to_140.parquet'))
 
