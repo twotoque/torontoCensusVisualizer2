@@ -26,15 +26,15 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
   );
   const [neighSearch, setNeighSearch] = useState("");
   const [showLimit, setShowLimit] = useState(10);
-  const [cityMedian, setCityMedian] = useState<number | null>(null);
+  const [cityStats, setCityStats] = useState<{ median: number | null; mean: number | null } | null>(null);
 
-  // Fetch city median from API
+  // Fetch city summary stats from API
   useEffect(() => {
-    setCityMedian(null);
+    setCityStats(null);
     fetch(`${apiBase}/census/${year}/row/${row}/median`)
       .then(r => r.json())
-      .then(d => setCityMedian(d.median ?? null))
-      .catch(() => setCityMedian(null));
+      .then(d => setCityStats({ median: d.median ?? null, mean: d.mean ?? null }))
+      .catch(() => setCityStats({ median: null, mean: null }));
   }, [year, row, apiBase]);
 
   const sortedChangeData = [...changeData]
@@ -62,20 +62,29 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
     "text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]";
 
   return (
-    <div className="flex basis-[40%] flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 pl-2">
+    <div className="flex w-full flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 lg:basis-[40%] lg:pl-2">
     
       
       <div className={cardClass}>
-        <div className={labelClass}>City of Toronto Median</div>
-        {cityMedian === null ? (
-          
-          <div className="flex h-[300px] items-center justify-center">
-                <Spinner />
-              </div>
+        <div className={labelClass}>City of Toronto Summary</div>
+        {cityStats === null ? (
+          <div className="flex h-[220px] items-center justify-center">
+            <Spinner />
+          </div>
         ) : (
-          <div className="flex items-baseline justify-between border-b border-dashed border-[var(--border)] py-2 last:border-b-0">
-            <span className="text-sm font-semibold text-[var(--text)]">Median</span>
-            <span className="text-sm font-bold text-[var(--accent)]">{formatMetric(cityMedian)}</span>
+          <div className="space-y-3 py-2">
+            <div className="flex items-baseline justify-between border-b border-dashed border-[var(--border)] pb-2">
+              <span className="text-sm font-semibold text-[var(--text)]">Median</span>
+              <span className="text-sm font-bold text-[var(--accent)]">
+                {cityStats.median === null ? "N/A" : formatMetric(cityStats.median)}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-semibold text-[var(--text)]">Mean</span>
+              <span className="text-sm font-bold text-[var(--accent)]">
+                {cityStats.mean === null ? "N/A" : formatMetric(cityStats.mean)}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -85,7 +94,7 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
 
         {prevLabel && (
           <div className="mb-3 flex flex-col gap-1 border-b border-[var(--border)] pb-2 text-[11px] text-[var(--text-muted)]">
-            <span className="pt-3 text-[var(--text)] font-semibold">Comparing against {prevYear}:</span>
+            <span className="pt-2 font-semibold text-[var(--text)]">Comparing against {prevYear}:</span>
             <span className="italic">{prevLabel}</span>
             {matchScore !== null && (
               <span

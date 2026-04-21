@@ -1,4 +1,5 @@
 # api.py
+import json
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -212,10 +213,31 @@ def search(year: int, q: str):
     _, _, _, census_df, label_col, *_, id_col = _load_cached(year)
     return JSONResponse(content={"results": search_rows(census_df, q, label_col=label_col, id_col=id_col)})
 
+@lru_cache(maxsize=4)
+def _cached_ward_traces(year: int):
+    _, _, wards_gdf, *_ = _load_cached(year)
+    wards_dict = json.loads(wards_gdf.to_json())
+    lons, lats = [], []
+    for feature in wards_dict["features"]:
+        geom = feature["geometry"]
+        coords = geom["coordinates"]
+        polygons = coords if geom["type"] == "MultiPolygon" else [coords]
+        for polygon in polygons:
+            for ring in polygon:
+                lons.extend([c[0] for c in ring] + [None])
+                lats.extend([c[1] for c in ring] + [None])
+    return lons, lats
+
+@lru_cache(maxsize=256)
+def _cached_map_json(year: int, row: int) -> str:
+    geo_gdf, geo_dict, _, census_df, label_col, wards_name_col, id_col = _load_cached(year)
+    lons, lats = _cached_ward_traces(year)
+    fig_dict = build_map(geo_gdf, geo_dict, lons, lats, census_df, resolve_row(census_df, row, id_col), label_col, wards_name_col)
+    return pio.to_json(go.Figure(fig_dict))
+
 @app.get("/census/{year}/row/{row}/map")
 def get_map(year: int, row: int):
-    geo_gdf, geo_dict, wards_gdf, census_df, label_col, wards_name_col, id_col = _load_cached(year)
-    return _to_json(build_map(geo_gdf, geo_dict, wards_gdf, census_df, resolve_row(census_df, row, id_col), label_col, wards_name_col))
+    return Response(content=_cached_map_json(year, row), media_type="application/json")
 
 @app.get("/census/{year}/row/{row}/bar")
 def get_bar(year: int, row: int):
@@ -362,10 +384,12 @@ def get_median(year: int, row: int):
             pass
     
     median_val = None
+    mean_val = None
     if values:
         median_val = statistics.median(values)
+        mean_val = statistics.mean(values)
     
-    return JSONResponse(content=_sanitize({"median": median_val}))
+    return JSONResponse(content=_sanitize({"median": median_val, "mean": mean_val}))
 
 @app.get("/health")
 def health():

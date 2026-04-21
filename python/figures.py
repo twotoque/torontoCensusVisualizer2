@@ -21,7 +21,7 @@ def get_safe_label(census_df: pd.DataFrame, row_index: int, label_col: str) -> s
     return val
 
 def build_map(
-    geo_gdf, geo_dict, wards_gdf, census_df,
+    geo_gdf, geo_dict, ward_lons, ward_lats, census_df,
     row_index, label_col="Neighbourhood Name", wards_name_col="AREA_NAME"
 ) -> dict: 
     """
@@ -65,21 +65,10 @@ def build_map(
         ),
     ))
 
-    wards_dict = json.loads(wards_gdf.to_json())
-    lons, lats = [], []
-    for feature in wards_dict["features"]:
-        geom = feature["geometry"]
-        coords = geom["coordinates"]
-        polygons = coords if geom["type"] == "MultiPolygon" else [coords]
-        for polygon in polygons:
-            for ring in polygon:
-                lons.extend([c[0] for c in ring] + [None])
-                lats.extend([c[1] for c in ring] + [None])
-
     fig.add_trace(go.Scattermapbox(
         mode="lines",
-        lon=lons,
-        lat=lats,
+        lon=ward_lons,
+        lat=ward_lats,
         line=dict(width=2, color="red"),
         name="City Wards",
         showlegend=True,
@@ -88,7 +77,7 @@ def build_map(
 
     fig.update_layout(
         mapbox_style="carto-positron",
-        mapbox_zoom=10,
+        mapbox_zoom=8.8,
         mapbox_center={"lat": 43.710, "lon": -79.380},
         margin={"r": 0, "t": 60, "l": 0, "b": 0},
         title={

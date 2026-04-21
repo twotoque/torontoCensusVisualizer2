@@ -17,9 +17,9 @@ export default defineConfig({
     allowedHosts: ['beta.torontocensusvisualizer.com'],
     proxy: {
       '/api': {
-        target: 'http://api:8000', 
+        target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '') 
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
     

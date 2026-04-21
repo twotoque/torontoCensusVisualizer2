@@ -15,7 +15,7 @@ from transformers import AutoTokenizer, AutoModel
 from huggingface_hub import snapshot_download
 import os
 
-MODEL_DIR = Path("python/models/query_parser")
+MODEL_DIR = Path(os.environ.get("MODEL_DIR", Path(__file__).parent / "models" / "query_parser"))
 
 if not MODEL_DIR.exists() or not any(MODEL_DIR.iterdir()):
     snapshot_download(
@@ -29,9 +29,9 @@ VALID_YEARS = [2001, 2006, 2011, 2016, 2021]
 # make sure it matches the architecture used during training in build_nlp.py
 
 class QueryParser(nn.Module):
-    def __init__(self, n_intents, n_ner_labels, dropout=0.1):
+    def __init__(self, encoder_name, n_intents, n_ner_labels, dropout=0.1):
         super().__init__()
-        self.encoder = AutoModel.from_pretrained(str(MODEL_DIR))
+        self.encoder = AutoModel.from_pretrained(encoder_name)
         hidden = self.encoder.config.hidden_size
         self.intent_head = nn.Sequential(
             nn.Linear(hidden, 128),
@@ -61,6 +61,7 @@ def _load():
     device    = "mps" if torch.backends.mps.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(meta["encoder"])  
     model     = QueryParser(
+        encoder_name = meta["encoder"],
         n_intents    = len(meta["intents"]),
         n_ner_labels = len(meta["ner_labels"]),
     ).to(device)

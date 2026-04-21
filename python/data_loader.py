@@ -3,12 +3,13 @@
 
 import json
 from functools import lru_cache
+import os
 
 import geopandas as gpd
 import pandas as pd
 from pathlib import Path
 
-BASE = Path("/app/data")
+BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
 
 POPULATION_LABELS = {
     2021: "Population, 2021",  

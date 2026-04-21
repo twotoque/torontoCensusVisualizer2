@@ -88,7 +88,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
     "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]";
 
   return (
-    <div className="flex basis-[60%] flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 pr-2">
+    <div className="flex w-full flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 lg:basis-[60%] lg:pr-2">
       {loading && (
         <div className="flex h-[300px] items-center justify-center">
               {loading && <Spinner />}
@@ -101,7 +101,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
             key={`${year}-${row}`}
             data={mapFig.data}
             layout={mapLayout}
-            style={{ width: "100%", height: 300 }}
+            style={{ width: "100%", height: 280 }}
           />
         </div>
       )}
@@ -176,7 +176,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
           <Plot
             data={filteredBarFig.data}
             layout={barLayout}
-            style={{ width: "100%", height: 260 }}
+            style={{ width: "100%", height: 240 }}
           />
         </div>
       )}
