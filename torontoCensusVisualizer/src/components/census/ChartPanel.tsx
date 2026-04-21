@@ -174,7 +174,6 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
 
           {/* Bar Chart */}
           <Plot
-            key={`bar-${year}-${row}-${visibleNeighbourhoods.length}`}
             data={filteredBarFig.data}
             layout={barLayout}
             style={{ width: "100%", height: 260 }}

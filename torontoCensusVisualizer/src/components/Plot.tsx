@@ -1,6 +1,7 @@
 // src/components/Plot.tsx
-import React, { useEffect, useRef } from "react";
-import Plotly from "plotly.js-basic-dist-min";
+import React, { useEffect, useRef, useState } from "react";
+import { Spinner } from "./Spinner";
+import { loadPlotlyBasic } from "./plotlyLoader";
 
 interface PlotProps {
   data: any[];
@@ -8,26 +9,64 @@ interface PlotProps {
   style?: React.CSSProperties;
 }
 
+type PlotlyApi = Awaited<ReturnType<typeof loadPlotlyBasic>>;
+
 const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [plotly, setPlotly] = useState<PlotlyApi | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
-    Plotly.react(ref.current, data, layout ?? {});
-  }, [data, layout]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => Plotly.Plots.resize(el));
-    observer.observe(el);
+    let alive = true;
+    loadPlotlyBasic()
+      .then(module => {
+        if (alive) {
+          setPlotly(module);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!alive) return;
+        if (error instanceof Error) {
+          setLoadError(error.message);
+        } else {
+          setLoadError("Failed to load Plotly library.");
+        }
+      });
     return () => {
-      observer.disconnect();
-      Plotly.purge(el);
+      alive = false;
     };
   }, []);
 
-  return <div ref={ref} style={style} />;
+  useEffect(() => {
+    if (!ref.current || !plotly) return;
+    plotly.react(ref.current, data, layout ?? {});
+  }, [data, layout, plotly]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !plotly) return;
+    const observer = new ResizeObserver(() => plotly.Plots.resize(el));
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      plotly.purge(el);
+    };
+  }, [plotly]);
+
+  return (
+    <div ref={ref} style={style} className="relative">
+      {!plotly && !loadError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Spinner />
+        </div>
+      )}
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-red-600 dark:text-red-400">
+          Failed to load chart: {loadError}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Plot;

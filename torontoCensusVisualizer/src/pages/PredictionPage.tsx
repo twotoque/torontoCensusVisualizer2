@@ -74,103 +74,110 @@ export const PredictionPage: React.FC = () => {
   }
 
   const COLORS = PREDICTION_COLORS;
-  const traces: any[] = [];
 
-  selected.forEach((neigh, ci) => {
-    const r = results[neigh];
-    if (!r || r.error) return;
-    const color = COLORS[ci % COLORS.length];
-    const histYears = Object.keys(r.historical).map(Number).sort();
-    const histValues = histYears.map(y => r.historical[y]);
+  const traces = React.useMemo(() => {
+    const nextTraces: any[] = [];
 
-    if (r.is_split) {
-      const preYears = histYears.filter(y => y < 2021);
-      const preValues = preYears.map(y => r.historical[y]);
-      traces.push({
-        x: preYears,
-        y: preValues,
-        mode: "lines+markers",
-        name: `${neigh} (pre-split)`,
-        line: { color, width: 1.5, dash: "dot" },
-        marker: { size: 4, color },
-        opacity: 0.4,
-      });
+    selected.forEach((neigh, ci) => {
+      const r = results[neigh];
+      if (!r || r.error) return;
+      const color = COLORS[ci % COLORS.length];
+      const histYears = Object.keys(r.historical).map(Number).sort();
+      const histValues = histYears.map(y => r.historical[y]);
 
-      const postYears = histYears.filter(y => y >= 2021);
-      const postValues = postYears.map(y => r.historical[y]);
-      traces.push({
-        x: postYears,
-        y: postValues,
-        mode: "markers+lines",
-        name: `${neigh} (historical)`,
-        line: { color, width: 2 },
-        marker: { size: 6, color },
-      });
+      if (r.is_split) {
+        const preYears = histYears.filter(y => y < 2021);
+        const preValues = preYears.map(y => r.historical[y]);
+        nextTraces.push({
+          x: preYears,
+          y: preValues,
+          mode: "lines+markers",
+          name: `${neigh} (pre-split)`,
+          line: { color, width: 1.5, dash: "dot" },
+          marker: { size: 4, color },
+          opacity: 0.4,
+        });
 
-      if (r.predecessor_series) {
-        Object.entries(r.predecessor_series).forEach(([predName, pred]: [string, any]) => {
-          const predYears = Object.keys(pred.historical)
-            .map(Number)
-            .sort()
-            .filter(y => y <= 2021);
-          const predValues = predYears.map(y => pred.historical[y]);
-          const pct = Math.round(pred.weight * 100);
-          const sourceName = r.predecessors?.find((p: any) => p.name === predName)?.source_neighbourhood;
-          const label = sourceName
-            ? `${predName} (formed from ${sourceName}, ${pct}%)`
-            : `${predName} (${pct}%)`;
-          traces.push({
-            x: predYears,
-            y: predValues,
-            mode: "lines+markers",
-            name: label,
-            line: { color, width: 1.5, dash: "dashdot" },
-            marker: { size: 4, symbol: "diamond", color },
-            opacity: 0.6,
+        const postYears = histYears.filter(y => y >= 2021);
+        const postValues = postYears.map(y => r.historical[y]);
+        nextTraces.push({
+          x: postYears,
+          y: postValues,
+          mode: "markers+lines",
+          name: `${neigh} (historical)`,
+          line: { color, width: 2 },
+          marker: { size: 6, color },
+        });
+
+        if (r.predecessor_series) {
+          Object.entries(r.predecessor_series).forEach(([predName, pred]: [string, any]) => {
+            const predYears = Object.keys(pred.historical)
+              .map(Number)
+              .sort()
+              .filter(y => y <= 2021);
+            const predValues = predYears.map(y => pred.historical[y]);
+            const pct = Math.round(pred.weight * 100);
+            const sourceName = r.predecessors?.find((p: any) => p.name === predName)?.source_neighbourhood;
+            const label = sourceName
+              ? `${predName} (formed from ${sourceName}, ${pct}%)`
+              : `${predName} (${pct}%)`;
+            nextTraces.push({
+              x: predYears,
+              y: predValues,
+              mode: "lines+markers",
+              name: label,
+              line: { color, width: 1.5, dash: "dashdot" },
+              marker: { size: 4, symbol: "diamond", color },
+              opacity: 0.6,
+            });
           });
+        }
+      } else {
+        nextTraces.push({
+          x: histYears,
+          y: histValues,
+          mode: "markers+lines",
+          name: `${neigh} (historical)`,
+          line: { color, width: 2 },
+          marker: { size: 6, color },
         });
       }
-    } else {
-      traces.push({
-        x: histYears,
-        y: histValues,
-        mode: "markers+lines",
-        name: `${neigh} (historical)`,
-        line: { color, width: 2 },
-        marker: { size: 6, color },
+
+      nextTraces.push({
+        x: r.gp_full.years,
+        y: r.gp_full.mean,
+        mode: "lines",
+        name: `${neigh} (forecast)`,
+        line: { color, width: 2, dash: "dot" },
       });
-    }
 
-    traces.push({
-      x: r.gp_full.years,
-      y: r.gp_full.mean,
-      mode: "lines",
-      name: `${neigh} (forecast)`,
-      line: { color, width: 2, dash: "dot" },
+      nextTraces.push({
+        x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
+        y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
+        fill: "toself",
+        fillcolor: hexToRgba(color, 0.1),
+        line: { color: "transparent" },
+        name: `${neigh} 95% CI`,
+        showlegend: false,
+        type: "scatter",
+      });
     });
 
-    traces.push({
-      x: [...r.gp_full.years, ...r.gp_full.years.slice().reverse()],
-      y: [...r.gp_full.upper, ...r.gp_full.lower.slice().reverse()],
-      fill: "toself",
-      fillcolor: hexToRgba(color, 0.1),
-      line: { color: "transparent" },
-      name: `${neigh} 95% CI`,
-      showlegend: false,
-      type: "scatter",
-    });
-  });
+    return nextTraces;
+  }, [COLORS, selected, results]);
 
   const activeShapNeigh = shapNeigh ?? selected[0];
-  const shap = activeShapNeigh && results[activeShapNeigh]?.shap;
-  const shapTraces: any[] = shap
-    ? shap.features.map(f => ({
-        x: shap.years,
-        y: shap.values.map(v => v[f]),
-        type: "bar",
-        name: f,
-      }))
-    : [];
+  const shapTraces = React.useMemo(() => {
+    const shap = activeShapNeigh && results[activeShapNeigh]?.shap;
+    return shap
+      ? shap.features.map((f: string) => ({
+          x: shap.years,
+          y: shap.values.map((v: any) => v[f]),
+          type: "bar",
+          name: f,
+        }))
+      : [];
+  }, [activeShapNeigh, results]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
