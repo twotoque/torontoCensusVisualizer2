@@ -339,7 +339,7 @@ def _template_ranking(values, neighbourhoods, years, metric) -> str:
     year = years[0]
     year_vals = values.get(year, {})
     if not year_vals:
-        return f"No data found for {metric} in {year}."
+        return f"No data found for {metric} in {year}. As I am a local AI model trained on Toronto census data, I can only answer questions about Toronto neighbourhoods and census years. Try using the prompt builder below to rephrase your question."
     sortable = {n: v for n, v in year_vals.items() if isinstance(v, float)}
     if not sortable:
         return f"Could not rank {metric} in {year} — values are not numeric."
@@ -586,7 +586,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
         if not results:
             return {
-                "answer": "Could not find a matching census metric for your query.",
+                "answer": "Could not find a matching census metric for your query. As I am a local AI model trained on Toronto census data, I can only answer questions about Toronto neighbourhoods and census years. Try using the prompt builder below to rephrase your question.",
                 "intent": intent, "metric": None, "context": {}, "disambiguation": None,
             }
 
@@ -602,7 +602,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         row_ids = _get_row_ids(query, neighbourhoods, years)
         if not row_ids:
             return {
-                "answer": "Could not find a matching census metric for your query.",
+                "answer": "Could not find a matching census metric for your query. As I am a local AI model trained on Toronto census data, I can only answer questions about Toronto neighbourhoods and census years. Try using the prompt builder below to rephrase your question.",
                 "intent": intent, "metric": results[0]["label"], "context": {}, "disambiguation": None,
             }
 
@@ -626,9 +626,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     else:
         if not neighbourhoods:
             return {
-                "answer": "Could not identify a neighbourhood in your query. "
-                          "Try including a Toronto neighbourhood name such as "
-                          "'Malvern', 'Annex', or 'Scarborough Village'.",
+                "answer": "Could not identify a neighbourhood in your query. As I am a local AI model trained on Toronto census data, I can only answer questions about Toronto neighbourhoods and census years. Try using the prompt builder below to rephrase your question. Try including a Toronto neighbourhood name such as 'Malvern', 'Annex', or 'Scarborough Village'.",
                 "intent": intent, "metric": display_metric, "context": {}, "disambiguation": None,
             }
         values = _fetch_values(row_ids, neighbourhoods)

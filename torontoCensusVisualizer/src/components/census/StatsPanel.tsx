@@ -62,13 +62,13 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
     "text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]";
 
   return (
-    <div className="flex basis-[40%] flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 pl-2">
+    <div className="flex w-full flex-col gap-3 overflow-y-auto px-4 pb-4 pt-4 lg:basis-[40%] lg:pl-2">
     
       
       <div className={cardClass}>
         <div className={labelClass}>City of Toronto Summary</div>
         {cityStats === null ? (
-          <div className="flex h-[300px] items-center justify-center">
+          <div className="flex h-[220px] items-center justify-center">
             <Spinner />
           </div>
         ) : (
@@ -94,7 +94,7 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
 
         {prevLabel && (
           <div className="mb-3 flex flex-col gap-1 border-b border-[var(--border)] pb-2 text-[11px] text-[var(--text-muted)]">
-            <span className="pt-3 text-[var(--text)] font-semibold">Comparing against {prevYear}:</span>
+            <span className="pt-2 font-semibold text-[var(--text)]">Comparing against {prevYear}:</span>
             <span className="italic">{prevLabel}</span>
             {matchScore !== null && (
               <span

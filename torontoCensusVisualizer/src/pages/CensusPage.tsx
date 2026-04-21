@@ -95,7 +95,7 @@ export const CensusPage: React.FC = () => {
         {title && <div className="mb-2 text-base font-semibold text-[var(--text)]">{title}</div>}
         <YearTabs years={availableYears} active={year} onSelect={setYear} />
       </div>
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <ChartPanel mapFig={mapFig} barFig={barFig} loading={loading} year={year} row={row} />
         <StatsPanel
           changeData={changeData}

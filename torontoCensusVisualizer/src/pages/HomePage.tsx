@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { href, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import headerImg from "../assets/Header img.png";
 import censusVideo from "../assets/CensusView.mp4";
 import predictionVideo from "../assets/Prediction.mp4";
@@ -71,7 +71,7 @@ export const HomePage: React.FC = () => {
             <div className="space-y-7 ">
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-                  View 20+ years of Toronto census data with AI-driven insights easily.
+                  View 20+ years of Toronto census data with AI-driven insights easily
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-[var(--text-muted)] sm:text-lg">
                   Explore neighbourhood trends from 2001 to 2021, compare change across census releases,
