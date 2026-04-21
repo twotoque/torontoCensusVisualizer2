@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { href, useNavigate } from "react-router-dom";
 import headerImg from "../assets/Header img.png";
 import censusVideo from "../assets/CensusView.mp4";
 import predictionVideo from "../assets/Prediction.mp4";
 import chatVideo from "../assets/Chat.mp4";
 import compareVideo from "../assets/Compare.mp4";
+import paperImg from "../assets/paper.png";
 import {
   ArrowRight,
   ChevronRight,
@@ -168,16 +169,61 @@ export const HomePage: React.FC = () => {
           </div>
 
 
-            <div className="space-y-10 pace-y-4">
-              <div className="flex items-center pb-0 mb-3">
-                <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-3xl lg:text-3xl">
-                  Credits
-                </h2>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)] lg:items-start">
+              <div className="space-y-10 pace-y-4">
+                <div className="flex items-center pb-0 mb-3">
+                  <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-3xl lg:text-3xl">
+                    Credits
+                  </h2>
                 </div>
-                <p>Project by <a href="https://www.twotoque.com/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Derek Song</a>.</p> 
-                <p>This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If you want to contribute, find a bug, or have feedback, please submit an issue or create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">Github Repository </a>. As such, please use at your own risk.</p>
-              
-          </div> 
+                <p>
+                  Project by{" "}
+                  <a
+                    href="https://www.twotoque.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                  >
+                    Derek Song
+                  </a>.
+                </p>
+
+                <p>
+                  This project is not affiliated or endorsed by the City of Toronto or Statistics Canada. If
+                  you want to contribute, find a bug, or have feedback, please submit an issue or create a pull
+                  request on the{" "}
+                  <a
+                    href="https://github.com/twotoque/torontoCensusVisualizer2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                  >
+                    Github Repository
+                  </a>
+                  . As such, please use at your own risk.
+                </p>
+                
+                <p>
+                  We also produced a white paper outlining the ongoing tests conducted to improve the
+                  accuracy of the model, as well as a basic high level architecture overview.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.open("https://docs.google.com/document/d/1SNGPiXUhtpM14wsuH2g4CMaPnX8PJAeJI8bSigpDG-w/edit?usp=sharing", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] transition hover:bg-[var(--surface-alt)]"
+                >
+                  View White Paper
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="order-last overflow-hidden lg:order-none">
+                <img
+                  src={paperImg}
+                  alt="White paper preview"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
 
         </section>
       </div>
