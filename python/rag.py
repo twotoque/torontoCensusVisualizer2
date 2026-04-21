@@ -53,23 +53,41 @@ def semantic_search_with_disambiguation(
     query: str,
     year: int | None = None,
     limit: int = 5,
-    similarity_threshold: float = 0.05,  # scores within this range are "similar"
+    similarity_threshold: float = 0.03,  # scores within this range are "similar"
     min_score: float = 0.1,  # reject results below this entirely
 ) -> tuple[list[dict], bool]:
     """
     Returns (results, needs_disambiguation).
     needs_disambiguation is True if top results are too close to call.
+
+    When `year` is provided, the search is scoped to that year only — this prevents
+    cross-year duplicates (e.g. the same metric indexed under both 2016 and 2021)
+    from appearing as false disambiguation candidates.
     """
     results = semantic_search(query, year=year, limit=limit)
     results = [r for r in results if r["score"] > min_score]
     if not results:
         return [], False
+
     top_score = results[0]["score"]
     similar = [r for r in results if top_score - r["score"] <= similarity_threshold]
+
+    # if one label contains another, the more specific one wins outright
+    if len(similar) > 1:
+        labels = [r["label"] for r in similar]
+        non_subsumed = [
+            r for r in similar
+            if not any(
+                r["label"] != other and r["label"] in other
+                for other in labels
+            )
+        ]
+        if len(non_subsumed) == 1:
+            return non_subsumed, False  # clear winner, no disambiguation needed
+        similar = non_subsumed if non_subsumed else similar
+
     needs_disambiguation = len(similar) > 1
     return similar if needs_disambiguation else results[:1], needs_disambiguation
-
-
 def semantic_search(
     query: str,
     year: int | None = None,
