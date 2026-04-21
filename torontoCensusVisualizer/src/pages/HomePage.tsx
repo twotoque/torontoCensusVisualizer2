@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import headerImg from "../assets/Header Img.png";
+import headerImg from "../assets/Header img.png";
 import {
   ArrowRight,
   ChevronRight,

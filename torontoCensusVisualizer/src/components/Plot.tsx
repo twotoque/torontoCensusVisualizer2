@@ -9,15 +9,29 @@ interface PlotProps {
   style?: React.CSSProperties;
 }
 
+type PlotlyApi = Awaited<ReturnType<typeof loadPlotlyBasic>>;
+
 const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [plotly, setPlotly] = useState<null | { react: Function; purge: Function; Plots: { resize: Function } }>(null);
+  const [plotly, setPlotly] = useState<PlotlyApi | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    loadPlotlyBasic().then(module => {
-      if (alive) setPlotly(module);
-    });
+    loadPlotlyBasic()
+      .then(module => {
+        if (alive) {
+          setPlotly(module);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!alive) return;
+        if (error instanceof Error) {
+          setLoadError(error.message);
+        } else {
+          setLoadError("Failed to load Plotly library.");
+        }
+      });
     return () => {
       alive = false;
     };
@@ -41,9 +55,14 @@ const Plot: React.FC<PlotProps> = ({ data, layout, style }) => {
 
   return (
     <div ref={ref} style={style} className="relative">
-      {!plotly && (
+      {!plotly && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Spinner />
+        </div>
+      )}
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-red-600 dark:text-red-400">
+          Failed to load chart: {loadError}
         </div>
       )}
     </div>
