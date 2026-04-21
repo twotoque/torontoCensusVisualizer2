@@ -14,7 +14,7 @@ export default defineConfig({
     }),],
   server: {
     host: true,
-    allowedHosts: ['beta.torontocensusvisualizer.com'],
+    allowedHosts: ['torontocensusvisualizer.com', 'www.torontocensusvisualizer.com'],
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
