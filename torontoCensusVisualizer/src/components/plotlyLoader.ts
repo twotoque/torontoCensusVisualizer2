@@ -16,14 +16,24 @@ function unwrapPlotly(module: unknown): PlotlyApi {
 
 export function loadPlotlyBasic(): Promise<PlotlyApi> {
   if (!basicPromise) {
-    basicPromise = import("plotly.js-basic-dist-min").then(unwrapPlotly);
+    basicPromise = import("plotly.js-basic-dist-min")
+      .then(unwrapPlotly)
+      .catch((error) => {
+        basicPromise = null;
+        throw error;
+      });
   }
   return basicPromise;
 }
 
 export function loadPlotlyMapbox(): Promise<PlotlyApi> {
   if (!mapboxPromise) {
-    mapboxPromise = import("plotly.js-mapbox-dist-min").then(unwrapPlotly);
+    mapboxPromise = import("plotly.js-mapbox-dist-min")
+      .then(unwrapPlotly)
+      .catch((error) => {
+        mapboxPromise = null;
+        throw error;
+      });
   }
   return mapboxPromise;
 }
