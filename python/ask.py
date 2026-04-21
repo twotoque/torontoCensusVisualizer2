@@ -23,7 +23,7 @@ import statistics
 
 
 BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
-weights_df = pd.read_parquet("data/weights/140_to_158.parquet")
+weights_df = pd.read_parquet(BASE / "weights/140_to_158.parquet")
 
 # training wheels for the RAG
 ENRICHMENTS = {
