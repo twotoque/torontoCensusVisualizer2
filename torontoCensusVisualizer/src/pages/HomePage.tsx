@@ -207,6 +207,16 @@ export const HomePage: React.FC = () => {
                   We also produced a white paper outlining the ongoing tests conducted to improve the
                   accuracy of the model, as well as a basic high level architecture overview.
                 </p>
+                <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.open("https://github.com/twotoque/torontoCensusVisualizer2", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:bg-[var(--accent-hover)]"
+                >
+                  View Github Repository 
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+
                 <button
                   type="button"
                   onClick={() => window.open("https://docs.google.com/document/d/1SNGPiXUhtpM14wsuH2g4CMaPnX8PJAeJI8bSigpDG-w/edit?usp=sharing", "_blank")}
@@ -215,6 +225,14 @@ export const HomePage: React.FC = () => {
                   View White Paper
                   <ChevronRight className="h-4 w-4" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => window.open("https://huggingface.co/twotoque/query-parser", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-transparent px-5 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface)]"
+                >
+                  View HuggingFace ML Repository
+                </button>
+                </div>
               </div>
               <div className="order-last overflow-hidden lg:order-none">
                 <img
