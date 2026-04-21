@@ -4,8 +4,18 @@ from pathlib import Path
 from functools import lru_cache
 import os
 
-BASE = Path(os.environ.get('DATA_DIR', Path(__file__).parent.parent / 'data'))
+def _resolve_data_dir() -> Path:
+    data_dir = os.environ.get("DATA_DIR")
+    if data_dir:
+        return Path(data_dir)
 
+    container_data_dir = Path("/app/data")
+    if container_data_dir.exists():
+        return container_data_dir
+
+    return Path(__file__).parent.parent / "data"
+
+BASE = _resolve_data_dir()
 @lru_cache(maxsize=1)
 def load_permits() -> pd.DataFrame:
     """Load and combine all permit CSVs, parse dates, normalize columns."""
