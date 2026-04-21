@@ -10,9 +10,11 @@ interface PlotProps {
   plotKey?: string;
 }
 
+type PlotlyApi = Awaited<ReturnType<typeof loadPlotlyMapbox>>;
+
 const PlotGeo: React.FC<PlotProps> = ({ data, layout, style, plotKey }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [plotly, setPlotly] = useState<null | { react: Function; purge: Function; Plots: { resize: Function } }>(null);
+  const [plotly, setPlotly] = useState<PlotlyApi | null>(null);
 
   useEffect(() => {
     let alive = true;
