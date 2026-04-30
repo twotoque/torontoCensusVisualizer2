@@ -218,11 +218,12 @@ def _extract_neighbourhoods(query: str, known_neighbourhoods: list[str]) -> list
     matches: list[tuple[int, str]] = []
 
     for canonical in known_neighbourhoods:
+        canonical_norm = _normalize_text(canonical)
         best_alias = None
         best_score = -1
         for alias in _generate_neighbourhood_aliases(canonical):
             alias_norm = _normalize_text(alias)
-            if len(alias_norm.split()) < 2 and alias_norm != _normalize_text(canonical):
+            if len(alias_norm.split()) < 2 and alias_norm != canonical_norm:
                 continue
             if not alias_norm:
                 continue
