@@ -53,6 +53,22 @@ BLOCKED_LABELS = {
     "Neighbourhood Name",
 }
 
+RANKING_CUES = [
+    r"\btop\b",
+    r"\bhighest\b",
+    r"\blowest\b",
+    r"\brank\b",
+    r"\branking\b",
+    r"\bmost\b",
+    r"\bleast\b",
+    r"\bwhich neighbourhood\b",
+    r"\bwhich neighbourhoods\b",
+    r"\bwhich area\b",
+    r"\bwhich areas\b",
+    r"\ball neighbourhoods\b",
+    r"\bneighbourhoods\b",
+]
+
 # Use word-boundary aware replacement to avoid breaking words like "income"
 STOP_WORDS = [
     "what was", "what is", "show me", "how did", "compare",
@@ -71,6 +87,48 @@ ATTRIBUTE_MAP = {
         2021: "Total - Age groups of the population - 25% sample data",
     }
 }
+
+def _canonical_metric_field(query: str) -> str | None:
+    """
+    Return the canonical metric field name if the query mentions one.
+
+    This allows us to map common metric families directly to the exact row
+    labels for each census year instead of relying on a generic embedding
+    search over words like "population".
+    """
+    q = query.lower()
+    for field in sorted(ATTRIBUTE_MAP.keys(), key=len, reverse=True):
+        if re.search(rf"\b{re.escape(field)}\b", q):
+            return field
+    return None
+
+
+def _looks_like_ranking_query(query: str) -> bool:
+    q = query.lower()
+    return any(re.search(pattern, q) for pattern in RANKING_CUES)
+
+
+def _year_specific_search_query(query: str, neighbourhoods: list[str], year: int) -> str:
+    """
+    Convert a natural-language query into the best search label for one year.
+    """
+    search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
+    canonical_field = _canonical_metric_field(search_query)
+
+    if canonical_field:
+        mapped = get_attribute(canonical_field, year)
+        if mapped != canonical_field:
+            return mapped
+
+    lower_query = search_query.lower()
+    if year == 2021 and "population" in lower_query:
+        return "Total - Age groups of the population - 25% sample data"
+    if year == 2021 and "mother tongue" in lower_query:
+        return "Total - Mother tongue for the population in private households - 25% sample data"
+    if str(year) not in search_query:
+        return f"{search_query} {year}"
+    return search_query
+
 
 def get_attribute(field: str, year: int) -> str:
     """Return the correct CSV attribute name for a given field and year."""
@@ -256,16 +314,7 @@ def _clean_query_for_rag(query: str, neighbourhoods: list[str], years: list[int]
 def _get_row_ids(query: str, neighbourhoods: list[str], years: list[int]) -> dict:
     row_ids = {}
     for year in years:
-        search_query = _clean_query_for_rag(query, neighbourhoods, [year]) or query
-
-        # append year to help find year-specific rows like "Population, 2011"
-        if search_query:
-            if year == 2021 and "population" in search_query.lower():
-                search_query = "Total - Age groups of the population - 25% sample data"
-            elif year == 2021 and "mother tongue" in search_query.lower():
-                search_query = "Total - Mother tongue for the population in private households - 25% sample data"
-            elif str(year) not in search_query:
-                search_query = f"{search_query} {year}"
+        search_query = _year_specific_search_query(query, neighbourhoods, year)
 
         results = semantic_search(search_query, year=year, limit=5)
         results = [r for r in results if r["label"].strip() not in BLOCKED_LABELS]
@@ -490,6 +539,7 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     years          = parsed["years"]
     cleaned_metric = _clean_query_for_rag(query, neighbourhoods, years)
     explicit_year  = bool(re.search(r"\b(?:2001|2006|2011|2016|2021)\b", query))
+    canonical_field = _canonical_metric_field(cleaned_metric or query)
 
     neighbourhoods = [n for n in neighbourhoods if len(n) > 3]
 
@@ -499,6 +549,11 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
     if intent == "cross_neighbourhood" and len(neighbourhoods) < 2:
         intent = "single_value" if neighbourhoods else "ranking"
+
+    # A single neighbourhood query like "What was the population of X in 2021?"
+    # should not be treated as a ranking unless the user explicitly asks for a rank.
+    if intent == "ranking" and len(neighbourhoods) == 1 and not _looks_like_ranking_query(query):
+        intent = "single_value"
 
     # 2. if it is a trend, do a special multi-year search and answer generation flow
     if intent == "trend":
@@ -621,6 +676,9 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
         # which triggers unnecessary disambiguation prompts.
         search_year = years[0] if explicit_year and len(years) == 1 else None
 
+        if canonical_field and years:
+            search_query = _year_specific_search_query(query, neighbourhoods, years[0])
+
         results, needs_disambiguation = semantic_search_with_disambiguation(
             search_query, year=search_year, limit=5
         )
@@ -630,8 +688,13 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
                 for fallback_year in available_years_desc:
                     if fallback_year in years:
                         continue
+                    fallback_query = (
+                        _year_specific_search_query(query, neighbourhoods, fallback_year)
+                        if canonical_field
+                        else search_query
+                    )
                     results, needs_disambiguation = semantic_search_with_disambiguation(
-                        search_query, year=fallback_year, limit=5
+                        fallback_query, year=fallback_year, limit=5
                     )
                     if results:
                         years = [fallback_year]
@@ -670,6 +733,8 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
 
         first_year   = next(iter(row_ids))  
         display_metric = _get_label_for_row(row_ids[first_year], first_year) or results[0]["label"]
+        if canonical_field == "population":
+            display_metric = "Population"
     # 4. Fetch values
     if intent == "ranking":
         year = years[0]

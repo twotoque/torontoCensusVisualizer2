@@ -23,6 +23,11 @@ if not MODEL_DIR.exists() or not any(MODEL_DIR.iterdir()):
         local_dir=str(MODEL_DIR)
     )
 VALID_YEARS = [2001, 2006, 2011, 2016, 2021]
+NEIGHBOURHOOD_SUFFIXES = {
+    "heights", "village", "west", "east", "north", "south", "centre",
+    "center", "park", "corridor", "quarter", "gardens", "town", "valley",
+    "woods", "shore", "shores", "beach", "beaches", "point",
+}
 
 
 # define model
@@ -133,6 +138,112 @@ def _decode_ner(tokens, ner_ids, id2ner):
     return spans
 
 
+def _normalize_neighbourhood_spans(spans: list[str], known_neighbourhoods: list[str]) -> list[str]:
+    """
+    Expand partial NER spans to the best matching census neighbourhood name.
+
+    The model sometimes extracts a prefix like "York University" for the full
+    neighbourhood "York University Heights". Prefer the longest known match.
+    """
+    if not spans:
+        return []
+
+    known_by_lower = {n.lower(): n for n in known_neighbourhoods}
+    normalized: list[str] = []
+
+    for span in spans:
+        span_clean = span.strip()
+        if not span_clean:
+            continue
+
+        span_lower = span_clean.lower()
+
+        if span_lower in known_by_lower:
+            candidate = known_by_lower[span_lower]
+        else:
+            candidates = [
+                n for n in known_neighbourhoods
+                if span_lower in n.lower() or n.lower() in span_lower
+            ]
+            if candidates:
+                candidate = max(candidates, key=len)
+            else:
+                candidate = span_clean
+
+        if candidate not in normalized:
+            normalized.append(candidate)
+
+    return normalized
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize text for loose phrase matching."""
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def _generate_neighbourhood_aliases(name: str) -> list[str]:
+    """
+    Generate a small set of useful aliases for a neighbourhood name.
+
+    We keep the aliases conservative: exact name, parenthetical prefix, hyphen
+    prefix, and a short suffix-stripped form when the final token is a common
+    geographic descriptor.
+    """
+    aliases = {name}
+
+    base = re.sub(r"\s*\(.*?\)\s*", " ", name).strip()
+    if base:
+        aliases.add(base)
+
+    if "-" in base:
+        aliases.add(base.split("-", 1)[0].strip())
+
+    tokens = base.split()
+    if len(tokens) >= 3 and tokens[-1].lower() in NEIGHBOURHOOD_SUFFIXES:
+        aliases.add(" ".join(tokens[:-1]))
+
+    return [a for a in aliases if a]
+
+
+def _extract_neighbourhoods(query: str, known_neighbourhoods: list[str]) -> list[str]:
+    """
+    Deterministically match neighbourhood phrases in the query.
+
+    This is used before NER output because the model sometimes confuses nearby
+    neighbourhoods when names share common tokens like "North" or "South".
+    """
+    normalized_query = _normalize_text(query)
+    matches: list[tuple[int, str]] = []
+
+    for canonical in known_neighbourhoods:
+        best_alias = None
+        best_score = -1
+        for alias in _generate_neighbourhood_aliases(canonical):
+            alias_norm = _normalize_text(alias)
+            if len(alias_norm.split()) < 2 and alias_norm != _normalize_text(canonical):
+                continue
+            if not alias_norm:
+                continue
+            pattern = rf"(?<!\w){re.escape(alias_norm)}(?!\w)"
+            if re.search(pattern, normalized_query):
+                score = len(alias_norm.split()) * 100 + len(alias_norm)
+                if score > best_score:
+                    best_alias = canonical
+                    best_score = score
+        if best_alias is not None:
+            matches.append((best_score, best_alias))
+
+    matches.sort(key=lambda item: item[0], reverse=True)
+
+    result: list[str] = []
+    for _, canonical in matches:
+        if canonical not in result:
+            result.append(canonical)
+    return result
+
+
 # api
 
 def parse(query: str) -> dict:
@@ -178,19 +289,27 @@ def parse(query: str) -> dict:
     tokens  = tokenizer.convert_ids_to_tokens(encoding["input_ids"][0].tolist())
     spans   = _decode_ner(tokens, ner_ids, id2ner)
 
-    # estore proper casing on neighbourhood names from NER
-    spans["NEIGHBOURHOOD"] = [
-        neighbourhood_lookup.get(n.lower(), n)
-        for n in spans["NEIGHBOURHOOD"]
-    ]
+    direct_matches = _extract_neighbourhoods(query, meta["neighbourhoods"])
 
-    # fallback: direct substring match against known neighbourhood list
-    if not spans["NEIGHBOURHOOD"]:
+    # Restore proper casing and expand partial neighbourhood spans to the
+    # longest known census neighbourhood name.
+    ner_matches = _normalize_neighbourhood_spans(
+        [neighbourhood_lookup.get(n.lower(), n) for n in spans["NEIGHBOURHOOD"]],
+        meta["neighbourhoods"],
+    )
+
+    # Prefer deterministic phrase matches from the raw query. They are more
+    # reliable than the model when names overlap or share directional tokens.
+    if direct_matches:
+        spans["NEIGHBOURHOOD"] = direct_matches
+    elif ner_matches:
+        spans["NEIGHBOURHOOD"] = ner_matches
+    else:
         query_lower = query.lower().replace("the ", "")
-        spans["NEIGHBOURHOOD"] = [
-            n for n in meta["neighbourhoods"]
-            if n.lower() in query_lower
-        ]
+        spans["NEIGHBOURHOOD"] = _normalize_neighbourhood_spans(
+            [n for n in meta["neighbourhoods"] if _normalize_text(n) in _normalize_text(query_lower)],
+            meta["neighbourhoods"],
+        )
     years = _extract_years(query)
 
     #defaults
