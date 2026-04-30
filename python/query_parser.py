@@ -307,8 +307,9 @@ def parse(query: str) -> dict:
         spans["NEIGHBOURHOOD"] = ner_matches
     else:
         query_lower = query.lower().replace("the ", "")
+        normalized_query = _normalize_text(query_lower)
         spans["NEIGHBOURHOOD"] = _normalize_neighbourhood_spans(
-            [n for n in meta["neighbourhoods"] if _normalize_text(n) in _normalize_text(query_lower)],
+            [n for n in meta["neighbourhoods"] if _normalize_text(n) in normalized_query],
             meta["neighbourhoods"],
         )
     years = _extract_years(query)
