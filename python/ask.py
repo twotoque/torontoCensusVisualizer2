@@ -538,7 +538,10 @@ def answer(query: str, confirmed_row_id: int | None = None, confirmed_year: int 
     neighbourhoods = parsed["neighbourhoods"]
     years          = parsed["years"]
     cleaned_metric = _clean_query_for_rag(query, neighbourhoods, years)
-    explicit_year  = bool(re.search(r"\b(?:2001|2006|2011|2016|2021)\b", query))
+    explicit_year_pattern = r"\b(?:%s)\b" % "|".join(
+        re.escape(str(year)) for year in CENSUS_YEARS.keys()
+    )
+    explicit_year  = bool(re.search(explicit_year_pattern, query))
     canonical_field = _canonical_metric_field(cleaned_metric or query)
 
     neighbourhoods = [n for n in neighbourhoods if len(n) > 3]
