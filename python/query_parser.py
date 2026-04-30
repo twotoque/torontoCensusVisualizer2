@@ -207,20 +207,15 @@ def _generate_neighbourhood_aliases(name: str) -> list[str]:
     return [a for a in aliases if a]
 
 
-def _extract_neighbourhoods(query: str, known_neighbourhoods: list[str]) -> list[str]:
+def _find_neighbourhood_mentions(query: str, known_neighbourhoods: list[str]) -> list[tuple[int, int, str]]:
     """
-    Deterministically match neighbourhood phrases in the query.
-
-    This is used before NER output because the model sometimes confuses nearby
-    neighbourhoods when names share common tokens like "North" or "South".
+    Return all alias matches in the query as (start, end, canonical) spans.
     """
     normalized_query = _normalize_text(query)
-    matches: list[tuple[int, str]] = []
+    mentions: list[tuple[int, int, str, int]] = []
 
     for canonical in known_neighbourhoods:
         canonical_norm = _normalize_text(canonical)
-        best_alias = None
-        best_score = -1
         for alias in _generate_neighbourhood_aliases(canonical):
             alias_norm = _normalize_text(alias)
             if len(alias_norm.split()) < 2 and alias_norm != canonical_norm:
@@ -228,21 +223,51 @@ def _extract_neighbourhoods(query: str, known_neighbourhoods: list[str]) -> list
             if not alias_norm:
                 continue
             pattern = rf"(?<!\w){re.escape(alias_norm)}(?!\w)"
-            if re.search(pattern, normalized_query):
-                score = len(alias_norm.split()) * 100 + len(alias_norm)
-                if score > best_score:
-                    best_alias = canonical
-                    best_score = score
-        if best_alias is not None:
-            matches.append((best_score, best_alias))
+            for match in re.finditer(pattern, normalized_query):
+                start, end = match.span()
+                span_len = end - start
+                score = (span_len * 1000) + (len(alias_norm.split()) * 100) + len(alias_norm)
+                mentions.append((start, end, canonical, score))
 
-    matches.sort(key=lambda item: item[0], reverse=True)
+    return [(start, end, canonical) for start, end, canonical, _ in mentions]
 
-    result: list[str] = []
-    for _, canonical in matches:
-        if canonical not in result:
-            result.append(canonical)
-    return result
+
+def _select_non_overlapping_neighbourhoods(mentions: list[tuple[int, int, str]]) -> list[str]:
+    """
+    Keep the longest, non-overlapping neighbourhood mentions.
+    """
+    if not mentions:
+        return []
+
+    scored_mentions = sorted(
+        mentions,
+        key=lambda item: (item[1] - item[0], item[2]),
+        reverse=True,
+    )
+
+    selected_spans: list[tuple[int, int]] = []
+    selected_names: list[str] = []
+
+    for start, end, canonical in scored_mentions:
+        overlaps = any(not (end <= s or start >= e) for s, e in selected_spans)
+        if overlaps:
+            continue
+        selected_spans.append((start, end))
+        if canonical not in selected_names:
+            selected_names.append(canonical)
+
+    return selected_names
+
+
+def _extract_neighbourhoods(query: str, known_neighbourhoods: list[str]) -> list[str]:
+    """
+    Deterministically match neighbourhood phrases in the query.
+
+    This is used before NER output because the model sometimes confuses nearby
+    neighbourhoods when names share common tokens like "North" or "South".
+    """
+    mentions = _find_neighbourhood_mentions(query, known_neighbourhoods)
+    return _select_non_overlapping_neighbourhoods(mentions)
 
 
 # api
@@ -304,7 +329,9 @@ def parse(query: str) -> dict:
     if direct_matches:
         spans["NEIGHBOURHOOD"] = direct_matches
     elif ner_matches:
-        spans["NEIGHBOURHOOD"] = ner_matches
+        spans["NEIGHBOURHOOD"] = _select_non_overlapping_neighbourhoods(
+            _find_neighbourhood_mentions(query, ner_matches)
+        ) or ner_matches
     else:
         query_lower = query.lower().replace("the ", "")
         normalized_query = _normalize_text(query_lower)
