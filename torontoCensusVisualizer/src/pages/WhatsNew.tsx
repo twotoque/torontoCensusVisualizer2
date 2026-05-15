@@ -78,7 +78,7 @@ export const WhatsNew: React.FC = () => {
           </h1>
           
           <p className="pt-5 pb-5  text-base  text-[var(--bot-bubble-text)]">
-           Toronto Census Visualizer 2.0 transforms census data into an neighbourhood interactive analyst. Council staff and residents can ask questions, see citywide trends, and peek into future scenarios without writing code. 
+           Toronto Census Visualizer 2.0 transforms census data into a neighbourhood interactive analyst. Council staff and residents can ask questions, see citywide trends, and peek into future scenarios without writing code. 
           </p>
 
         
