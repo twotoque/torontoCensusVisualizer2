@@ -138,7 +138,7 @@ export const WhatsNew: React.FC = () => {
                     className="underline hover:no-underline"
                   >
                     Derek Song
-                  </a>. Not affliated/endorsed with the City of Toronto or Statistics Canada. 
+                  </a>. Not affiliated with or endorsed by the City of Toronto or Statistics Canada.
                 </p>
 
           <h2 className="text-3xl pt-5 pb-3 font-semibold tracking-tight sm:text-2xl">
