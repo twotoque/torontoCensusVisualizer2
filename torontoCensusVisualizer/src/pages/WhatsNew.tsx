@@ -175,6 +175,31 @@ export const WhatsNew: React.FC = () => {
             />
 
 
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            The evolution to 2.0
+          </h2>
+
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+            In 2026, I began experimenting more with machine learning and realized that by leveraging retrieval augmented generation (i.e. something similar to ChatGPT, Gemini), natural language processing, and Gaussian processes, we could reduce the many pain points users had with the original version, such as trying to find the exact row number to query a census datapoint. Likewise, the Open Data repository has over 2 decades worth of data, and this tool should be updated to support future years, including the one happening this year. 
+            </p>
+
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+            Infrastructure wise, it was running a Heroku container which wasn’t the most efficient. This evolution led me to frame the central challenge of the 2.0 version:
+            </p>
+
+
+          <h3 className="text-xl ml-10 tracking-tight sm:text-lg sm:ml-5">
+            How might we leverage natural language intelligence and predictive modeling to make 20+ years of complex civic data instantly accessible and actionable for every Torontonian?
+          </h3>
+
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            Building it 
+          </h2>
+
+
       </section>
     </div>
   );
