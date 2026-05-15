@@ -6,7 +6,11 @@ import chatVideo from "../assets/Chat.mp4";
 import compareVideo from "../assets/Compare.mp4";
 import old from "../assets/old.png";
 import graph from "../assets/graph.png";
-
+import area from "../assets/area.svg";
+import verify from "../assets/verification.png";
+import data from "../assets/newdata.png"
+import rag from "../assets/may-15-2026.png"
+import entireProgramDiagram from "../assets/may-15-2026 all.png"
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -52,7 +56,6 @@ const featureCards = [
     video: compareVideo,
   },
 ];
-
 
 export const WhatsNew: React.FC = () => {
 
@@ -207,7 +210,7 @@ export const WhatsNew: React.FC = () => {
 
 
           <p className=" text-base  text-[var(--bot-bubble-text)]">
-           This data was sourced from a program called the Toronto Open Data website which therein was collected by Statistics Canada. The problem was that there were 2604 rows in the census spreadsheet with 158 neighbourhoods. While I only had to focus on 5 specific topics, there was immense potential to help visualize it to showcase differences between Toronto’s vast size. 
+           This data was sourced from a program called the <a href="https://open.toronto.ca/dataset/neighbourhood-profiles/" className="underline hover:no-underline">Toronto Open Data website which therein was collected by Statistics Canada</a>. The problem was that there were 2604 rows in the census spreadsheet with 158 neighbourhoods. While I only had to focus on 5 specific topics, there was immense potential to help visualize it to showcase differences between Toronto’s vast size. 
             </p>
 
 
@@ -259,14 +262,28 @@ export const WhatsNew: React.FC = () => {
           </h2>
 
 
+            <img 
+                src={rag}
+                alt="Description of image"
+                className="mx-auto w-1/2 h-auto rounded-2xl"
+            />
+
+
+
           <p className="text-base  text-[var(--bot-bubble-text)]">
            (TLDR: <b>Not exactly.</b>) The assistant is grounded in local census data and structured retrieval, which helps reduce hallucinations compared to a purely open-ended chatbot. I found this important for learning (i.e. I don't want to build a simple chatbot) as well as I don't want it searching and making up information for random queries. </p> 
            
-           <p className="text-base  text-[var(--bot-bubble-text)]">
+
+
+            <img 
+                src={verify}
+                alt="Description of image"
+                className="w-full h-auto rounded-2xl"
+            />
+          <p className="text-base  text-[var(--bot-bubble-text)]">
            The tradeoff is that it can still be sensitive to how a question is phrased, which is why we also added a prompt builder to help users form cleaner, more consistent queries. 
            We've also added sentence enhancements for key phrases so common requests are easier for the system to understand.  Finally, this tool features a "Jump to Cell" feature that lets users verify the source data behind the assistant's answers, which is especially important when it detects large variations that could indicate mismatched metrics across years.
             </p>
-
 
 
           <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
@@ -291,8 +308,17 @@ export const WhatsNew: React.FC = () => {
            The neighborhood division problem was a significant technical hurdle caused by the City of Toronto increasing its neighborhood count from 140 to 158 in 2021. This change created a "boundary discontinuity" that standard models would incorrectly interpret as a population trend rather than a geographic shift.
             </p>
 
+
+
+            <img 
+                src={area}
+                alt="Description of image"
+                className="mx-auto w-1/2 h-auto rounded-2xl"
+            />
+
+
           <p className="text-base  text-[var(--bot-bubble-text)]">
-           I've attempted to address this using an areal interpolation parquet.  Right now it is very basic; if Area A was made up of 60% of Area B and 40% of Area C, then that is what is represented in the parquet.  However, this doesn't account for the fact that population density isn't uniform across a neighborhood. I've also attempted to use lower-level dissemination area data to help refine this, but it is very computationally expensive and not currently implemented in the live version. This is an area for future improvement, and I'm open to suggestions on how to better solve this problem.
+           I've attempted to address this using an areal interpolation parquet.  Right now it is very basic. For example, if Area C was made up of 60% Area A and 40% Area B, the parquet will compare the 2021 census value of Area C based on the 60% of Area A's and 40% of Area B's 2016 census results. However, this doesn't account for the fact that population density isn't uniform across a neighborhood. I've also attempted to use lower-level dissemination area data to help refine this, but it is very computationally expensive and not currently implemented in the live version. This is an area for future improvement, and I'm open to suggestions on how to better solve this problem.
             </p>
 
             <p className="text-base  text-[var(--bot-bubble-text)]">
@@ -356,6 +382,13 @@ export const WhatsNew: React.FC = () => {
             Format changes between 2002-2016 and 2021-present
           </h2>
 
+
+
+            <img 
+                src={data}
+                alt="Description of image"
+                className="w-full h-auto rounded-2xl"
+            />
             <p className="text-base text-[var(--bot-bubble-text)]">
                 The CSV format changes a lot between the older census files and 2021. For example, a 2016 row starts with columns like `_id`, `Category`, `Topic`, and `Characteristic`, while 2021 starts with `Neighbourhood Name` and puts the neighbourhoods across the columns instead. That means the file structure, labels, and units all need different handling before the data can be compared cleanly. 
             </p>
@@ -370,6 +403,7 @@ export const WhatsNew: React.FC = () => {
             Infrastructure 
           </h2>
 
+
             <p className="text-base text-[var(--bot-bubble-text)]">
                 This project was also a great way to sharpen my skills in a pure Docker environment. Since we had a three-tiered program managing them in containers was essential for development best practices. 
             </p>
@@ -379,8 +413,15 @@ export const WhatsNew: React.FC = () => {
             </p>
 
             <p className="text-base text-[var(--bot-bubble-text)]">
-                This led to a 76% reduction in server costs compared to the previous Heroku setup, while also improving response times for the more intensive tasks.
+                This led to a <b>76% reduction</b> in server costs compared to the previous Heroku setup, while also improving response times for the more intensive tasks.
             </p>
+
+
+            <img 
+                src={entireProgramDiagram}
+                alt="Description of image"
+                className="w-full h-auto rounded-2xl"
+            />
 
 
           <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
@@ -389,7 +430,7 @@ export const WhatsNew: React.FC = () => {
 
 
             <p className="text-base text-[var(--bot-bubble-text)]">
-                It was phenomenal to hear from the many users and staff who appreciated this tool and gave some great feedback. While this is a solid foundation, there are many opportunities to improve the accuracy, reliability, and user experience of this tool. These include improving the areal interpolation method to better handle boundary changes, improvements to the prediction model, and a deeper dive into how we can interpret the SHAP values better. 
+                It was phenomenal to hear from the many users, staff, and attendees from Toronto's Open Data Jams that appreciated this tool and gave some great feedback. While this is a solid foundation, there are many opportunities to improve the accuracy, reliability, and user experience of this tool. These include improving the areal interpolation method to better handle boundary changes, improvements to the prediction model, and a deeper dive into how we can interpret the SHAP values better. 
             </p>
 
 

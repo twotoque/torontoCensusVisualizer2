@@ -1,0 +1,43 @@
+---
+config:
+  layout: dagre
+---
+flowchart LR
+ subgraph PythonBackend["Python backend"]
+        Registry["Census registry<br>python/census_registry.py"]
+        Loader["CSV + GeoJSON loader<br>python/data_loader.py"]
+        Figures["Plotly figure builders<br>python/figures.py"]
+        AskSvc["Natural-language Q&amp;A<br>python/ask.py"]
+        Parser["Intent + entity parser<br>python/query_parser.py"]
+        RAG["Chroma semantic search<br>python/rag.py"]
+        Predictor["GP forecasts + SHAP<br>python/prediction.py"]
+        Permits["Permit ingestion<br>python/permits.py"]
+  end
+ subgraph Offline["Offline preprocessing"]
+        Splitter["CSV splitting + validation<br>python/build_helper/data_split.py"]
+        Areal["Areal interpolation weights<br>python/build_helper/build_areal_interpolation.py"]
+        DA["Dissemination-area mapping<br>python/build_helper/build_dissemination_neigfhbourhood.py"]
+        PermitWeights["Permit-weighted crosswalk<br>python/build_helper/build_permit_interpolation.py"]
+  end
+ subgraph Data["Local data artifacts"]
+        Census["Census CSVs<br>data/2001..2021"]
+        Geo["Neighbourhood + ward GeoJSON<br>data/neighbourhood-* / data/wards-*"]
+        Weights["Crosswalk parquet files<br>data/weights/*.parquet"]
+        ChromaDS["ChromaDB embeddings<br>data/chroma"]
+        PermitsCSV["Permit CSVs + address points<br>data/permits-* / data/address"]
+  end
+    Frontend["React frontend<br>torontoCensusVisualizer/src"] --> GoMain["Go API gateway<br>go/main.go"]
+    GoMain --> RouterGo["Router<br>go/internal/router/router.go"]
+    RouterGo --> Proxy["gRPC proxy layer<br>go/internal/proxy/proxy.go"] & Cache["In-memory TTL cache<br>go/internal/cache/cache.go"]
+    Proxy --> PythonAPI["Python figures service<br>python/grpc_server.py + python/api.py"]
+    PythonAPI --> Registry & Figures & AskSvc & Predictor & Permits
+    Registry --> Loader
+    AskSvc --> Parser & RAG & Weights
+    RAG --> ChromaDS
+    Predictor --> Loader & Weights
+    Permits --> PermitsCSV
+    Loader --> Census & Geo & Weights & RAG
+    Areal --> Weights
+    DA --> Weights
+    PermitWeights --> Weights
+    Splitter --> Census & Geo
