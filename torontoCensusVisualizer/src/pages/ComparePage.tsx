@@ -30,6 +30,27 @@ const COLORS = [
   "#14b8a6", // teal
 ];
 
+type Suggestion = { row_id: number; label: string; document?: string; year?: number };
+
+function toRouteRow(rowId: number, year: number) {
+  return year === 2021 ? rowId + 2 : rowId;
+}
+
+function normalizeSuggestions(
+  results: Array<{ row?: number; row_id?: number; label: string; document?: string; year?: number }>,
+  year: number,
+  fromSemantic: boolean,
+): Suggestion[] {
+  return results.map(result => ({
+    row_id: fromSemantic
+      ? toRouteRow(result.row_id ?? 0, year)
+      : (result.row ?? result.row_id ?? 0),
+    label: result.label,
+    document: result.document,
+    year: result.year,
+  }));
+}
+
 export const ComparePage: React.FC = () => {
   const { setSlot } = useSearchSlot();
   const [availableYears, setAvailableYears] = useState<number[]>([2021]);
@@ -41,8 +62,7 @@ export const ComparePage: React.FC = () => {
   const [lineFig, setLineFig] = useState<any>(null);
 
   const [searchInput, setSearchInput] = useState("");
-  const [suggestions, setSuggestions] = useState<
-    { row_id: number; label: string; document?: string; year?: number }[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   const searchInputRef = useRef(searchInput);
   const suggestionsRef = useRef(suggestions);
@@ -181,10 +201,18 @@ export const ComparePage: React.FC = () => {
       const onChange = async (q: string) => {
         setLocalVal(q);
         if (!q) { setLocalSuggs([]); return; }
-        const d = await fetch(
-          `${API}/census/${yearRef.current}/semantic-search?q=${encodeURIComponent(q)}`
+        const year = yearRef.current;
+        const exact = await fetch(
+          `${API}/census/${year}/search?q=${encodeURIComponent(q)}`
         ).then(r => r.json()).catch(() => ({ results: [] }));
-        setLocalSuggs(d.results || []);
+        if (exact.results?.length) {
+          setLocalSuggs(normalizeSuggestions(exact.results, year, false));
+          return;
+        }
+        const d = await fetch(
+          `${API}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`
+        ).then(r => r.json()).catch(() => ({ results: [] }));
+        setLocalSuggs(normalizeSuggestions(d.results || [], year, true));
       };
 
       const onSubmit = () => {

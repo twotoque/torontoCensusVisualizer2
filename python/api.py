@@ -259,7 +259,8 @@ def get_export(year: int, row: int, kind: str):
     idx = resolve_row(census_df, row, id_col)
 
     if kind == "map":
-        fig_dict = build_map(geo_gdf, geo_dict, wards_gdf, census_df, idx, label_col, wards_name_col)
+        lons, lats = _cached_ward_traces(year)
+        fig_dict = build_map(geo_gdf, geo_dict, lons, lats, census_df, idx, label_col, wards_name_col)
     else:
         fig_dict = build_bar(census_df, idx, label_col)
 

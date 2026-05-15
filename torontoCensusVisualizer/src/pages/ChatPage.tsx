@@ -2,12 +2,35 @@
 // Chat interface orchestrator that composes modular chat components from /components/chat
 
 import React, { useState, useEffect } from "react";
-import { CellViewer, type CellTarget } from "../components/cell/CellViewer";
+import DOMPurify from "dompurify";
+import { CellViewer, type CellInfo, type CellTarget } from "../components/cell/CellViewer";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
 import { type Message } from "../components/chat/types";
 import { PromptBuilder } from "../components/chat/PromptBuilder";
 const API = "/api";
+
+interface ApiResponse {
+  answer?: string;
+  context?: { cell?: CellInfo };
+  disambiguation?: Array<{
+    id?: number;
+    row_id?: number;
+    year: number;
+    label?: string;
+    document?: string;
+    score?: number;
+  }>;
+}
+
+function normalizeDisambiguation(options: NonNullable<ApiResponse["disambiguation"]>) {
+  return options.map(opt => ({
+    row_id: opt.row_id ?? opt.id ?? 0,
+    year: opt.year,
+    label: opt.label ?? opt.document ?? `#${opt.row_id ?? opt.id ?? 0}`,
+    document: opt.document,
+  }));
+}
 
 function uid() {
   return crypto.randomUUID();
@@ -42,7 +65,7 @@ export const ChatPage: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q }),
-      }).then(r => r.json());
+      }).then(r => r.json() as Promise<ApiResponse>);
 
       if (d.disambiguation?.length) {
         setMessages(m => [
@@ -51,17 +74,18 @@ export const ChatPage: React.FC = () => {
             id: uid(),
             role: "disambiguation",
             content: "Multiple matches found — which did you mean?",
-            options: d.disambiguation,
+            options: normalizeDisambiguation(d.disambiguation ?? []),
             question: q,
           },
         ]);
       } else {
+        const sanitizedContent = DOMPurify.sanitize(d.answer || "No answer returned.");
         setMessages(m => [
           ...m,
           {
             id: uid(),
             role: "assistant",
-            content: d.answer || "No answer returned.",
+            content: sanitizedContent,
             cell: d.context?.cell,
           },
         ]);
@@ -87,13 +111,14 @@ export const ChatPage: React.FC = () => {
           confirmed_row_id: rowId,
           confirmed_year: year,
         }),
-      }).then(r => r.json());
+      }).then(r => r.json() as Promise<ApiResponse>);
+      const sanitizedContent = DOMPurify.sanitize(d.answer || "No answer returned.");
       setMessages(m => [
         ...m,
         {
           id: uid(),
           role: "assistant",
-          content: d.answer || "No answer returned.",
+          content: sanitizedContent,
           cell: d.context?.cell,
         },
       ]);
@@ -116,7 +141,11 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     fetch(`${API}/predict/neighbourhoods`)
       .then(r => r.json())
-      .then(d => setNeighbourhoods(d.neighbourhoods));
+      .then(d => setNeighbourhoods(d.neighbourhoods))
+      .catch(err => {
+        console.error("Failed to load neighbourhoods:", err);
+        setNeighbourhoods([]);
+      });
   }, []);
 
   return (

@@ -99,7 +99,7 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
             {matchScore !== null && (
               <span
                 className={`text-[10px] font-semibold ${
-                  matchScore >= 0.7 ? "text-emerald-500" : "text-rose-500"
+                  matchScore >= 0.7 ? "text-emerald-600" : "text-rose-600"
                 }`}
               >
                 {matchScore >= 0.7 ? "✓" : "⚠"} {(matchScore * 100).toFixed(0)}% confidence
@@ -172,7 +172,7 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
                     <div className="text-[var(--text)]">{formatMetric(rowData.current)}</div>
                     <div
                       className={`text-[11px] font-semibold ${
-                        pct >= 0 ? "text-emerald-500" : "text-rose-500"
+                        pct >= 0 ? "text-emerald-600" : "text-rose-600"
                       }`}
                     >
                       {pct >= 0 ? "+" : ""}
@@ -206,7 +206,7 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
 
       <div className={cardClass}>
         <div className={labelClass}>Export</div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 pt-3">
           <a href={`${apiBase}/census/${year}/row/${row}/export/map`} target="_blank" rel="noreferrer">
             <button className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
               Map PDF

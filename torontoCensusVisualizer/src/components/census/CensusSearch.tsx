@@ -6,11 +6,30 @@ interface CensusSearchProps {
   apiBase?: string;
 }
 
+type Suggestion = { row_id: number; label: string; document?: string; year?: number };
+
+function toRouteRow(rowId: number, year: number) {
+  return year === 2021 ? rowId + 2 : rowId;
+}
+
+function normalizeResults(
+  results: Array<{ row?: number; row_id?: number; label: string; document?: string; year?: number }>,
+  year: number,
+  fromSemantic: boolean,
+): Suggestion[] {
+  return results.map(result => ({
+    row_id: fromSemantic
+      ? toRouteRow(result.row_id ?? 0, year)
+      : (result.row ?? result.row_id ?? 0),
+    label: result.label,
+    document: result.document,
+    year: result.year,
+  }));
+}
+
 export const CensusSearch: React.FC<CensusSearchProps> = ({ year, onSelect, apiBase = "/api" }) => {
   const [input, setInput] = useState("");
-  const [suggestions, setSuggestions] = useState<
-    { row_id: number; label: string; document?: string; year?: number }[]
-  >([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   async function handleChange(q: string) {
     setInput(q);
@@ -18,10 +37,18 @@ export const CensusSearch: React.FC<CensusSearchProps> = ({ year, onSelect, apiB
       setSuggestions([]);
       return;
     }
-    const d = await fetch(`${apiBase}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`)
+    const exact = await fetch(`${apiBase}/census/${year}/search?q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .catch(() => ({ results: [] }));
-    setSuggestions(d.results || []);
+    if (exact.results?.length) {
+      setSuggestions(normalizeResults(exact.results, year, false));
+      return;
+    }
+
+    const semantic = await fetch(`${apiBase}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .catch(() => ({ results: [] }));
+    setSuggestions(normalizeResults(semantic.results || [], year, true));
   }
 
   function submit() {

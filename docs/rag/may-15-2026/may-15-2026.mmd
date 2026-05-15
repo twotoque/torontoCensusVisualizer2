@@ -1,0 +1,10 @@
+flowchart TD
+    A["User asks a Toronto census question"] --> B["Prompt builder helps reshape the query"]
+    B --> C["Sentence enhancements expand key phrases"]
+    C --> D["Query parser extracts intent, metric, neighbourhood, and year"]
+    D --> E["Semantic search finds the most relevant census row"]
+    E --> F["Backend resolves the matching row ID for the selected year"]
+    F --> G["The API fetches values from the local census CSVs"]
+    G --> H["Year-over-year comparison logic checks for boundary changes"]
+    H --> I["The assistant assembles a grounded answer with context"]
+    I --> J["Jump to Cell lets the user inspect the source data"]
