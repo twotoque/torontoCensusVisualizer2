@@ -384,7 +384,7 @@ export const WhatsNew: React.FC = () => {
 
 
             <p className="text-base text-[var(--bot-bubble-text)]">
-                It was great to hear from the many users and staff who appreciated this tool and gave some great feedback. While this is a great foundation, there are many opportunities to improve the accuracy, reliability, and user experience of this tool. These include improving the areal interpolation method to better handle boundary changes, improvements to the prediction model, and a deeper dive into how we can interpret the SHAP values better. 
+                It was phenomenal to hear from the many users and staff who appreciated this tool and gave some great feedback. While this is a solid foundation, there are many opportunities to improve the accuracy, reliability, and user experience of this tool. These include improving the areal interpolation method to better handle boundary changes, improvements to the prediction model, and a deeper dive into how we can interpret the SHAP values better. 
             </p>
 
 
