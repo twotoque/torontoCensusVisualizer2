@@ -116,7 +116,7 @@ export const WhatsNew: React.FC = () => {
 
 
              <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-              <strong>Toronto Census Visualizer is currently on beta testing and some results may be inaccurate.</strong> Treat results as experimental. This tool is not endorsed or affiliated with the City of Toronto or Statistics Canada. If you find an error, feel free to submit an issue / create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">GitHub repository</a>. 
+              <strong>Toronto Census Visualizer is currently in beta testing and some results may be inaccurate.</strong> Treat results as experimental. This is a personal project and is not endorsed or affiliated with the City of Toronto or Statistics Canada. If you find an error, feel free to submit an issue / create a pull request on the <a href="https://github.com/twotoque/torontoCensusVisualizer2" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">GitHub repository</a>. 
             </div>
 
           <p className="pt-5 pb-5  text-base  text-[var(--bot-bubble-text)]">
@@ -346,6 +346,11 @@ export const WhatsNew: React.FC = () => {
               </div>
             </div>
             
+
+
+            <p className="text-sm text-[var(--bot-bubble-text)]">
+                CI = Confidence Interval. MAPE = Mean Absolute Percentage Error. 
+            </p>
 
           <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
             Format changes between 2002-2016 and 2021-present
