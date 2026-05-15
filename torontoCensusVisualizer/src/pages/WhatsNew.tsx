@@ -6,7 +6,12 @@ import chatVideo from "../assets/Chat.mp4";
 import compareVideo from "../assets/Compare.mp4";
 import old from "../assets/old.png";
 import graph from "../assets/graph.png";
+
+import { useNavigate } from "react-router-dom";
+
 import {
+  ArrowRight,
+  ChevronRight,
   Map,
   LineChart,
   MessageCircle,
@@ -51,6 +56,8 @@ const featureCards = [
 
 export const WhatsNew: React.FC = () => {
 
+  const navigate = useNavigate();
+
       const [activeFeatureId, setActiveFeatureId] = useState(featureCards[0].id);
     
       const activeFeature = useMemo(
@@ -59,6 +66,7 @@ export const WhatsNew: React.FC = () => {
       );
 
   return (
+    <>
     <div className="h-full overflow-y-auto bg-[var(--bg)] text-[var(--text)]">
       <section className="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-8 lg:px-10 lg:py-10">
         <div className="space-y-3">
@@ -69,6 +77,35 @@ export const WhatsNew: React.FC = () => {
           <p className="pt-5 pb-5  text-base  text-[var(--bot-bubble-text)]">
            Toronto Census Visualizer 2.0 transforms census data into an neighbourhood interactive analyst. Council staff and residents can ask questions, see citywide trends, and peek into future scenarios without writing code. 
           </p>
+
+        
+
+          <div className="flex flex-wrap pb-4 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => navigate("/census")}
+                            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:bg-[var(--accent-hover)]"
+                          >
+                            Open Census Explorer
+                            <ArrowRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate("/prediction")}
+                            className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] transition hover:bg-[var(--surface-alt)]"
+                          >
+                            See Forecasts
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate("/ask")}
+                            className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-transparent px-5 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface)]"
+                          >
+                            Ask a Question
+                          </button>
+                        </div>
+          
 
 
             <img 
@@ -89,6 +126,17 @@ export const WhatsNew: React.FC = () => {
            <p className="pt-5 pb-5  text-base  text-[var(--bot-bubble-text)]">
            Meanwhile, residents increasingly expect interactive, conversational tools to understand high-level neighbourhood change. Toronto Census Visualizer 2.0 closes that gap: it layers natural-language querying, semantic search, and explainable forecasts using Toronto Open Data’s flagship datasets. By offering an “analyst in the browser,” the product cuts research time from hours to minutes and helps non-technical staff answer constituent questions.
           </p>
+          <p>
+                  Project by{" "}
+                  <a
+                    href="https://www.twotoque.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:no-underline"
+                  >
+                    Derek Song
+                  </a>. Not affliated/endorsed with the City of Toronto or Statistics Canada. 
+                </p>
 
           <h2 className="text-3xl pt-5 pb-3 font-semibold tracking-tight sm:text-2xl">
             Here's what's new:
@@ -149,7 +197,7 @@ export const WhatsNew: React.FC = () => {
 
 
           <p className="text-base  text-[var(--bot-bubble-text)]">
-           When I was a constituency assistant at the City of Toronto in summer 2024, I was assigned a <a href="https://www.twotoque.com/bikeshare" className="text-blue-500 underline hover:text-blue-600 transition-colors">task to research transportation and bike usage within an area in northern Scarborough</a>. This is when I discovered that the then-recent 2021 Census included some questions about how residents used biking, driving, and public transportation as a method of transportation.
+           When I was a constituency assistant at the City of Toronto in summer 2024, I was assigned a <a href="https://www.twotoque.com/bikeshare" className="underline hover:no-underline">task to research transportation and bike usage within an area in northern Scarborough</a>. This is when I discovered that the then-recent 2021 Census included some questions about how residents used biking, driving, and public transportation as a method of transportation.
             </p>
             <img 
                 src={graph}
@@ -220,17 +268,163 @@ export const WhatsNew: React.FC = () => {
             </p>
 
 
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            Predictions 
+          </h2>
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+                I chose Gaussian Processes because census data is naturally aggregated, comes out every couple of years, and this project has to deal with neighbourhood boundary changes over time. The model also gives uncertainty estimates, which is important when the historical data is sparse. (<a href="https://arxiv.org/abs/1906.09412" className="underline hover:no-underline">Yousefi et. al, 2019</a>). I also added SHAP so the model helps show why the forecast is leaning in a certain direction (<a href="https://www.youtube.com/watch?v=MQ6fFDwjuco2" className="underline hover:no-underline">Found these videos by A Data Odyssey useful</a>). On top of that, I experimented with <a href="https://open.toronto.ca/dataset/building-permits-cleared-permits/" className="underline hover:no-underline">permit data</a> as an extra signal to see whether development activity could improve the forecast, especially in neighbourhoods where census trends alone were not enough.
+            </p>
+
+            <p className="text-base  text-[var(--bot-bubble-text)]">
+                I've limited the predictions to population forecasts for now as a proof of concept, as well as to avoid redlining issues around forecasting more sensitive data like income.
+            </p>
+
+
           <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
             The neighbourhood division problem 
           </h2>
 
 
           <p className="text-base  text-[var(--bot-bubble-text)]">
-           This project is built as a React frontend with a Go API gateway and a Python backend that serves the census data, search, chart, and prediction endpoints. We chose a React frontend as compared to a Python-only Plotly + Dash in v1.0 because we found that using Python for the frontend was taking a lot of resources and slower. By separating the concerns, we can utilize Go’s fast proxy speeds via gRPC for the API gateway while reserving Python for the more machine learning-heavy tasks like forecasting.
+           The neighborhood division problem was a significant technical hurdle caused by the City of Toronto increasing its neighborhood count from 140 to 158 in 2021. This change created a "boundary discontinuity" that standard models would incorrectly interpret as a population trend rather than a geographic shift.
             </p>
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+           I've attempted to address this using an areal interpolation parquet.  Right now it is very basic; if Area A was made up of 60% of Area B and 40% of Area C, then that is what is represented in the parquet.  However, this doesn't account for the fact that population density isn't uniform across a neighborhood. I've also attempted to use lower-level dissemination area data to help refine this, but it is very computationally expensive and not currently implemented in the live version. This is an area for future improvement, and I'm open to suggestions on how to better solve this problem.
+            </p>
+
+            <p className="text-base  text-[var(--bot-bubble-text)]">
+                This problem is most prevalent in neighbourhoods that were split (defined as those that changed a lot during the translation period), compared to those who were stable (defined as those that had minimal change during the translation period). When using population prediction data, split neighbourhoods show acceptable 2016 performance but near-total 2021 breakdown, confirming that the parquet system right now is somewhat insufficient for reliable forecasting. These 36 neighbourhoods are flagged in the user interface with a reliability warning.
+            </p>
+
+            <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <div className="border-b border-[var(--border)] px-4 py-3">
+                <div className="text-sm font-semibold text-[var(--text)]">
+                  Forecast performance by neighbourhood type
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-[var(--surface-alt)]">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                        Metric
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                        Stable (n=120)
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                        Split (n=36)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-[var(--border)]">
+                      <td className="px-4 py-3 font-medium text-[var(--text)]">2016 Median MAPE</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">3.2%</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">11.6%</td>
+                    </tr>
+                    <tr className="border-t border-[var(--border)]">
+                      <td className="px-4 py-3 font-medium text-[var(--text)]">2016 CI Coverage</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">69.2%</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">52.8%</td>
+                    </tr>
+                    <tr className="border-t border-[var(--border)]">
+                      <td className="px-4 py-3 font-medium text-[var(--text)]">2021 Median MAPE</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">3.3%</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">89.1%</td>
+                    </tr>
+                    <tr className="border-t border-[var(--border)]">
+                      <td className="px-4 py-3 font-medium text-[var(--text)]">2021 CI Coverage</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">64.2%</td>
+                      <td className="px-4 py-3 text-[var(--bot-bubble-text)]">5.6%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            Format changes between 2002-2016 and 2021-present
+          </h2>
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                The CSV format changes a lot between the older census files and 2021. For example, a 2016 row starts with columns like `_id`, `Category`, `Topic`, and `Characteristic`, while 2021 starts with `Neighbourhood Name` and puts the neighbourhoods across the columns instead. That means the file structure, labels, and units all need different handling before the data can be compared cleanly. 
+            </p>
+
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                When comparing two rows from different years, the program tries to add a confidence score and display it to the user to ensure that the user can spot any potentially inaccurate comparisons or units. This is displayed in the user interface. 
+            </p>
+
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            Infrastructure 
+          </h2>
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                This project was also a great way to sharpen my skills in a pure Docker environment. Since we had a three-tiered program managing them in containers was essential for development best practices. 
+            </p>
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                To move away from the limitations of the previous Heroku setup, I transitioned the infrastructure to Hetzner. This allowed for a more cost-effective and high-performance environment where I could fully orchestrate the containers. Using a Docker Compose setup, I was able to manage the networking between the Go proxy and the FastAPI services, ensuring that the heavy computation required for the Gaussian Process forecasts and SHAP explanations had the dedicated resources they needed without slowing down the user experience.
+            </p>
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                This led to a 76% reduction in server costs compared to the previous Heroku setup, while also improving response times for the more intensive tasks.
+            </p>
+
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            What's next
+          </h2>
+
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                It was great to hear from the many users and staff who appreciated this tool and gave some great feedback. While this is a great foundation, there are many opportunities to improve the accuracy, reliability, and user experience of this tool. These include improving the areal interpolation method to better handle boundary changes, improvements to the prediction model, and a deeper dive into how we can interpret the SHAP values better. 
+            </p>
+
+
+
+            <p className="text-base text-[var(--bot-bubble-text)]">
+                This project has been and will be a personal project for me, so I am limited on what little time I have to contribute. However, this is why it is open source- feel free to contribute if you have suggestions or want to help out! I also hope that this project can be a useful reference for others looking to build similar tools in other cities or with other datasets.
+            </p>
+
+
+
+<div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.open("https://github.com/twotoque/torontoCensusVisualizer2", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:bg-[var(--accent-hover)]"
+                >
+                  View Github Repository 
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.open("https://docs.google.com/document/d/1SNGPiXUhtpM14wsuH2g4CMaPnX8PJAeJI8bSigpDG-w/edit?usp=sharing", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow)] transition hover:bg-[var(--surface-alt)]"
+                >
+                  View White Paper
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open("https://huggingface.co/twotoque/query-parser", "_blank")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-transparent px-5 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface)]"
+                >
+                  View HuggingFace ML Repository
+                </button>
+                </div>
 
 
       </section>
     </div>
+    </>
   );
 };

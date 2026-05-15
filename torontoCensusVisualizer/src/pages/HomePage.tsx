@@ -232,6 +232,13 @@ export const HomePage: React.FC = () => {
                 >
                   View HuggingFace ML Repository
                 </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/whatsnew")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-transparent px-5 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface)]"
+                >
+                  See How It's Built
+                </button>
                 </div>
               </div>
               <div className="order-last overflow-hidden lg:order-none">
