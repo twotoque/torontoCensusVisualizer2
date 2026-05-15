@@ -10,6 +10,27 @@ const COLORS = [
   "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6",
 ];
 
+type Suggestion = { row_id: number; label: string; document?: string; year?: number };
+
+function toRouteRow(rowId: number, year: number) {
+  return year === 2021 ? rowId + 2 : rowId;
+}
+
+function normalizeSuggestions(
+  results: Array<{ row?: number; row_id?: number; label: string; document?: string; year?: number }>,
+  year: number,
+  fromSemantic: boolean,
+): Suggestion[] {
+  return results.map(result => ({
+    row_id: fromSemantic
+      ? toRouteRow(result.row_id ?? 0, year)
+      : (result.row ?? result.row_id ?? 0),
+    label: result.label,
+    document: result.document,
+    year: result.year,
+  }));
+}
+
 interface Column {
   id:       string;           // `${rowId}-${year}`
   rowId:    number;
@@ -51,15 +72,22 @@ interface SlotSearchProps {
 const SlotSearch: React.FC<SlotSearchProps> = ({ onAdd }) => {
   const [val,   setVal]   = useState("");
   const [year,  setYear]  = useState(2021);
-  const [suggs, setSuggs] = useState<{ row_id: number; label: string }[]>([]);
+  const [suggs, setSuggs] = useState<Suggestion[]>([]);
 
   async function onChange(q: string) {
     setVal(q);
     if (!q) { setSuggs([]); return; }
+    const exact = await fetch(
+      `${API}/census/${year}/search?q=${encodeURIComponent(q)}`
+    ).then(r => r.json()).catch(() => ({ results: [] }));
+    if (exact.results?.length) {
+      setSuggs(normalizeSuggestions(exact.results, year, false));
+      return;
+    }
     const d = await fetch(
       `${API}/census/${year}/semantic-search?q=${encodeURIComponent(q)}`
     ).then(r => r.json()).catch(() => ({ results: [] }));
-    setSuggs(d.results || []);
+    setSuggs(normalizeSuggestions(d.results || [], year, true));
   }
 
   function submit(rowId: number, label: string) {
