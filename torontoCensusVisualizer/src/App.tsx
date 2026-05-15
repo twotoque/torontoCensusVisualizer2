@@ -16,6 +16,7 @@ import {
 import { ComparePage } from "./pages/ComparePage";
 import { CrossRowStatsPage } from "./pages/CrossrowPage";
 import { HomePage } from "./pages/HomePage";
+import { WhatsNew } from "./pages/WhatsNew";
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? detectSystemTheme());
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/prediction" element={<PredictionPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/crossrow" element={<CrossRowStatsPage />} />
+            <Route path="/whatsnew" element={<WhatsNew />} />
           </Routes>
         </main>
       </div>
