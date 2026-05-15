@@ -113,7 +113,7 @@ export const WhatsNew: React.FC = () => {
 
             <img 
                 src={headerImg}
-                alt="Description of image"
+                alt="Preview of the Toronto Census Visualizer 2.0 interface"
                 className="w-full h-auto rounded-2xl"
             />
 
