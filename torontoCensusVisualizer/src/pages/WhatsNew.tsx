@@ -196,8 +196,38 @@ export const WhatsNew: React.FC = () => {
 
 
           <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
-            Building it 
+            Building it and architectural overview
           </h2>
+
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+           This project is built as a React frontend with a Go API gateway and a Python backend that serves the census data, search, chart, and prediction endpoints. We chose a React frontend as compared to a Python-only Plotly + Dash in v1.0 because we found that using Python for the frontend was taking a lot of resources and slower. By separating the concerns, we can utilize Go’s fast proxy speeds via gRPC for the API gateway while reserving Python for the more machine learning-heavy tasks like forecasting.
+            </p>
+
+
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            Is this a GPT-wrapper? 
+          </h2>
+
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+           (TLDR: <b>Not exactly.</b>) The assistant is grounded in local census data and structured retrieval, which helps reduce hallucinations compared to a purely open-ended chatbot. I found this important for learning (i.e. I don't want to build a simple chatbot) as well as I don't want it searching and making up information for random queries. </p> 
+           
+           <p className="text-base  text-[var(--bot-bubble-text)]">
+           The tradeoff is that it can still be sensitive to how a question is phrased, which is why we also added a prompt builder to help users form cleaner, more consistent queries. 
+           We've also added sentence enhancements for key phrases so common requests are easier for the system to understand.  Finally, this tool features a "Jump to Cell" feature that lets users verify the source data behind the assistant's answers, which is especially important when it detects large variations that could indicate mismatched metrics across years.
+            </p>
+
+
+          <h2 className="text-3xl pt-5 font-semibold tracking-tight sm:text-2xl">
+            The neighbourhood division problem 
+          </h2>
+
+
+          <p className="text-base  text-[var(--bot-bubble-text)]">
+           This project is built as a React frontend with a Go API gateway and a Python backend that serves the census data, search, chart, and prediction endpoints. We chose a React frontend as compared to a Python-only Plotly + Dash in v1.0 because we found that using Python for the frontend was taking a lot of resources and slower. By separating the concerns, we can utilize Go’s fast proxy speeds via gRPC for the API gateway while reserving Python for the more machine learning-heavy tasks like forecasting.
+            </p>
 
 
       </section>
